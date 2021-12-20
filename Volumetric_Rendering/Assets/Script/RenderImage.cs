@@ -2,27 +2,41 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class RenderImage : MonoBehaviour
+[ImageEffectAllowedInSceneView] public class RenderImage : MonoBehaviour
 {
-    private Material material;
+    private Material m_Material;
+    private Camera m_Camera;
     [SerializeField] public Shader shader;
+    [SerializeField] public Transform box;
 
     private void Start()
     {
-        // Presuming there is only 1 camera and thats the main camera, sample the depth buffers
+        // Presuming there is only 1 camera and that is the main camera, sample the depth buffers
+        if (Camera.main == null) return;
         Camera.main.depthTextureMode = DepthTextureMode.Depth;
+        
+        if (m_Material == null)
+        {
+            m_Material = new Material(shader);
+        }
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        if (material == null)
+        if (m_Material == null)
         {
-            material = new Material(shader);
-            material.hideFlags = HideFlags.HideAndDontSave; // Don't know what this does
+            m_Material = new Material(shader);
         }
+        
+        // Get boxes position and scale
+        var position = box.position;
+        var localScale = box.localScale;
+        
+        // Set box bounds to shader
+        m_Material.SetVector("_BoundsMin", position - localScale / 2);
+        m_Material.SetVector("_BoundsMax", position + localScale / 2);
 
-        Matrix4x4 viewToWorld = Camera.main.cameraToWorldMatrix;
-        material.SetMatrix("_ViewToWorld", viewToWorld);
+        // Set noise to shader
 
-        Graphics.Blit(source, destination, material);
+        Graphics.Blit(source, destination, m_Material);
     }}
