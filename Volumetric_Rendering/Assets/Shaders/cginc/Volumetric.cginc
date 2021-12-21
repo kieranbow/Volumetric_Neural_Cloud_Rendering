@@ -2,14 +2,6 @@
 // Helper Function
 static float pi = 3.14159265359f;
 
-struct volume
-{
-    float amplitude;
-    float frequency;
-    float scale;
-    float offset;
-};
-
 float remap(const float value, const float old_min, const float old_max, const float new_min, const float new_max)
 {
     return new_min + (value - old_min) * (new_max - new_min) / (old_max - old_min);

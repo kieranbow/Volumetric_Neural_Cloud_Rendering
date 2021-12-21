@@ -23,6 +23,7 @@ Shader "Custom/Volumetric_clouds"
 
             // Includes
             #include "UnityCG.cginc"
+            #include "Lighting.cginc"
 
             // Custom Includes
             #include "cginc/Ray.cginc"
@@ -61,20 +62,16 @@ Shader "Custom/Volumetric_clouds"
             float3 _BoundsMin, _BoundsMax;
             float _CloudScale, _CloudOffset, _DensityThreshold, _DensityMulti;
             int _NumStep;
-
-
+            
             float sample_density(float3 position)
             {
                 const float uvw = position * _CloudScale * 0.001 + _CloudOffset * 0.01;
                 float4 shape = volume_texture_3d.SampleLevel(samplervolume_texture_3d, uvw, 0);
                 return max(shape.r - _DensityThreshold, 0.0f) * _DensityMulti;
             }
-            
+
             fixed4 frag (const v2f i) : SV_Target
             {
-                // Main render texture
-                fixed4 col = tex2D(_MainTex, i.uv);
-
                 // Depth texture
                 const float non_linear_depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
                 const float z_depth = LinearEyeDepth(non_linear_depth) * length(i.view_vector);
@@ -103,12 +100,16 @@ Shader "Custom/Volumetric_clouds"
                 float total_density = 0.0f;
                 while (dist_travelled < dist_limit)
                 {
-                    float3 sample_position = ray.origin + ray.direction * (dist_to_box + dist_travelled);
+                    const float3 sample_position = ray.origin + ray.direction * (dist_to_box + dist_travelled);
                     total_density += sample_density(sample_position) * step_size;
                     dist_travelled += step_size;
                 }
-                
-                return col * exp(-total_density);
+
+                // Combining outputs
+                const float3 background_color = tex2D(_MainTex, i.uv).rgb;
+                const float3 cloud_color = total_density * _LightColor0.rgb;
+                const float3 final_color = background_color * exp(-total_density) + cloud_color;
+                return float4(final_color, 1.0f);
             }
             ENDCG
         }
