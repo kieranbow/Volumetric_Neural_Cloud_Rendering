@@ -5,13 +5,13 @@ struct ray
 };
 
 // -----------------------------------------------
-// Ray Helper Functions
+// Helper Functions
 
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
-float2 ray_box_dist(const float3 bound_min, const float3 bound_max, const float3 ray_origin, const float3 ray_dir)
+float2 ray_box_dist(const float3 bound_min, const float3 bound_max, const ray ray)
 {
-	const float3 t0 = (bound_min - ray_origin) / ray_dir;
-	const float3 t1 = (bound_max - ray_origin) / ray_dir;
+	const float3 t0 = (bound_min - ray.origin) / ray.direction;
+	const float3 t1 = (bound_max - ray.origin) / ray.direction;
 
 	const float3 t_min = min(t0, t1);
 	const float3 t_max = max(t0, t1);

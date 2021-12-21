@@ -504,6 +504,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 609c2bb8f0b4ccb40a529ff348294376, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  material: {fileID: 2100000, guid: 57f497978455bf44faa4cf3d6f84e2d3, type: 2}
   shader: {fileID: 4800000, guid: a41fbe2f3adeed7479120603956d4c99, type: 3}
   box: {fileID: 839790543}
 --- !u!1 &1157529413
