@@ -3,7 +3,7 @@ Shader "Custom/Volumetric_clouds"
     Properties
     {
         _MainTex            ("Texture", 2D)                         = "white" {}
-        _CloudScale         ("Cloud Scale", Range(1.0, 100.0))      = 50.0
+        _CloudScale         ("Cloud Scale", Range(1.0, 1000.0))      = 50.0
         _CloudOffset        ("Cloud Offset", Range(0.1, 10.0))      = 1.0
         _DensityThreshold   ("Density Threshold", Range(0, 1))      = 0.5
         _DensityMulti       ("Density Multiplier", float)           = 5.0
@@ -33,7 +33,6 @@ Shader "Custom/Volumetric_clouds"
             {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
-                float3 view_vector : TEXCOORD1;
             };
 
             struct v2f
@@ -65,13 +64,15 @@ Shader "Custom/Volumetric_clouds"
             
             float sample_density(float3 position)
             {
-                const float uvw = position * _CloudScale * 0.001 + _CloudOffset * 0.01;
-                float4 shape = volume_texture_3d.SampleLevel(samplervolume_texture_3d, uvw, 0);
-                return max(shape.r - _DensityThreshold, 0.0f) * _DensityMulti;
+                const float3 uvw = position * _CloudScale * 0.001f + _CloudOffset * 0.01f;
+                float4 shape = volume_texture_3d.SampleLevel(samplervolume_texture_3d, uvw, 0.0f);
+                return max(shape.g - _DensityThreshold, 0.0f) * _DensityMulti;
             }
 
             fixed4 frag (const v2f i) : SV_Target
             {
+                float4 col = tex2D(_MainTex, i.uv);
+                
                 // Depth texture
                 const float non_linear_depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
                 const float z_depth = LinearEyeDepth(non_linear_depth) * length(i.view_vector);
@@ -105,11 +106,14 @@ Shader "Custom/Volumetric_clouds"
                     dist_travelled += step_size;
                 }
 
+                float transmittance = exp(-total_density);
+                return col * transmittance;
+                
                 // Combining outputs
-                const float3 background_color = tex2D(_MainTex, i.uv).rgb;
-                const float3 cloud_color = total_density * _LightColor0.rgb;
-                const float3 final_color = background_color * exp(-total_density) + cloud_color;
-                return float4(final_color, 1.0f);
+                //const float3 background_color = tex2D(_MainTex, i.uv).rgb;
+                //const float3 cloud_color = total_density * _LightColor0.rgb;
+                //const float3 final_color = background_color * beer_law(-total_density, 1.0f) + cloud_color;
+                //return float4(final_color, 1.0f);
             }
             ENDCG
         }

@@ -2,8 +2,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
-[ImageEffectAllowedInSceneView] public class RenderImage : MonoBehaviour
+// [ImageEffectAllowedInSceneView] 
+[ExecuteInEditMode]
+[ImageEffectAllowedInSceneView]
+public class RenderImage : MonoBehaviour
 {
     [SerializeField] public Material material;
     [SerializeField] public Shader shader;

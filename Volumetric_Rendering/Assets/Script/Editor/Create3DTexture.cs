@@ -4,8 +4,25 @@ using UnityEngine;
 // Code provided by Unity - https://docs.unity3d.com/Manual/class-Texture3D.html
 public class Create3DTexture : MonoBehaviour
 {
+    // https://www.youtube.com/watch?v=Aga0TBJkchM
+    private static float Perlin3D(float x, float y, float z)
+    {
+        // Get all permutations of noise for x, y, z
+        var ab = Mathf.PerlinNoise(x, y);
+        var bc = Mathf.PerlinNoise(y, z);
+        var ac = Mathf.PerlinNoise(x, z);
+        
+        // Get all reversed permutations of noise for x, y, z
+        var ba = Mathf.PerlinNoise(y, x);
+        var cb = Mathf.PerlinNoise(x, y);
+        var ca = Mathf.PerlinNoise(z, x);
+
+        // Return the average
+        return (ab + bc + ac + ba + cb + ca) / 6.0f;
+    }
+    
     [MenuItem("Textures/3DTexture")]
-    static void CreateTexture3D()
+    private static void CreateTexture3D()
     {
         // Configure the texture
         int size = 32;
@@ -29,14 +46,16 @@ public class Create3DTexture : MonoBehaviour
                 int yOffset = y * size;
                 for (int x = 0; x < size; x++)
                 {
-                    colors[x + yOffset + zOffset] = new Color(x * inverseResolution,
-                        y * inverseResolution, z * inverseResolution, 1.0f);
+                    if (Perlin3D(x * 0.9f, y * 0.9f, z * 0.9f) >= 0.5f)
+                    {
+                        colors[x + yOffset + zOffset] = new Color(x * inverseResolution, y * inverseResolution, z * inverseResolution, 1.0f);
+                    }
                 }
             }
         }
 
         // Copy the color values to the texture
-        texture.SetPixels(colors);
+        // texture.SetPixels(colors);
 
         // Apply the changes to the texture and upload the updated texture to the GPU
         texture.Apply();

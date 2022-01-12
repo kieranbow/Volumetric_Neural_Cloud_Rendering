@@ -24,3 +24,16 @@ float2 ray_box_dist(const float3 bound_min, const float3 bound_max, const ray ra
 
 	return float2(dist_to_box, dist_inside_box);
 }
+// Function from: http://www.cse.chalmers.se/~uffe/xjobb/RurikH%C3%B6gfeldt.pdf, Algorithm 5.2
+float3 ray_sphere(const float3 pos, const float radius, const ray ray, const float3 cam_pos)
+{
+	const float3 a = dot(ray.direction, ray.direction) * 2.0f;
+	const float3 b = dot(ray.direction, ray.origin) * 2.0f;
+	const float3 c = dot(ray.origin, pos);
+
+	const float3 discriminant = b * b - 2.0f * a * (c - radius * radius);
+	const float t = max((-b + sqrt(discriminant)) / a, 0.0f);
+	float3 intersect = cam_pos + ray.direction * t;
+
+	return intersect;
+}
