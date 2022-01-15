@@ -100,32 +100,50 @@ Shader "Custom/Volumetric_clouds"
             {
                 // Current sample position
                 const float3 uvw = position * _CloudScale * 0.001f + _CloudOffset * 0.01f;
+                const float3 detail_uvw = position * _DetailScale * 0.001f + _DetailOffset * 0.01f;
 
+                // Weather map
                 float4 sample_weather = Weather_tex.SampleLevel(samplerWeather_tex, position.xz / _mapScale, 0.0f);
-                float weather_map = normalize_weather_map(sample_weather, _globalCoverage);
-                float coverage = getCoverage(sample_weather);
-                float cloud_type = getCloud_type(sample_weather);
-                float precipitation = getPrecipitation(sample_weather);
+                float low_coverage = sample_weather.r;
+                float high_coverage = sample_weather.g;
+                float peaks = sample_weather.b;
                 float density = sample_weather.a;
+                float WMc = max(sample_weather.r, saturate(_globalCoverage - 0.5f) * sample_weather.g * 2.0f);
+
+                // Height Percentage
+                float height_percent = calculate_height_percentage(position, bounding_box.bound_min, bounding_box.size);
+
+                // Shape Altering height Function
+                float SRb = saturate(remap(height_percent, MIN, 0.07f, MIN, MAX));
+                float SRt = saturate(remap(height_percent, peaks * 0.2f, peaks, MAX, MIN));
+                float SA = SRb * SRt;
+
+                // Density Altering Height Function
+                float DRb = height_percent * saturate(remap(height_percent, MIN, 0.15f, MIN, MAX));
+                float DRt = saturate(remap(height_percent, 0.9f, MAX, MAX, MIN));
+                float DA = _globalCoverage * DRb * DRt * density * 2.0f;
                 
-                // Base cloud shape
+                // Sample 3D noise
                 float4 shape_noise = Shape_tex.SampleLevel(samplerShape_tex, uvw, 0.0f);
-                float4 detail_noise = Noise_tex.SampleLevel(samplerNoise_tex, uvw, 0.0f);
-                
-                // float low_freq_fbm = generate_fbm(shape);
-                //float base_shape = remap(low_freq_fbm, 1.0f - low_freq_fbm, 1.0f, 0.0f, 1.0f);
+                float4 detail_noise = Noise_tex.SampleLevel(samplerNoise_tex, detail_uvw, 0.0f);
 
-                
-                const float height_percent = calculate_height_percentage(position, bounding_box.bound_min, bounding_box.bound_max);
-                const float height_gradient = saturate(remap(height_percent, 0.0f, 0.2f, 0.0f, 1.0f)) * saturate(remap(height_percent, 1.0f, 0.7f, 0.0f, 1.0f));
+                // Base Shape
+                float SNsample = remap(shape_noise.r, generate_fbm(shape_noise) - 1.0f, MAX, MIN, MAX);
+                float SN = saturate(remap(SNsample * SA, 1.0f - _globalCoverage * WMc, MAX, MIN, MAX)); //* DA;
 
-                float base_shape = generate_base_shape(shape_noise);
-                
-                base_shape *= alter_shape_height(height_percent, precipitation);
-                //base_shape *= alter_density_height(height_percent, density, _globalCoverage);
+                // Detail Noise
+                float DNfbm = generate_fbm(detail_noise);
+                float e = _globalCoverage * 0.75f;
+                float DNmod = 0.35f * e * lerp(DNfbm, 1.0f - DNfbm, saturate(height_percent * 5.0f));
+                float d = saturate(remap(SN, DNfbm, MAX, MIN, MAX)) * DA;
 
+                return d;
                 
-                return max(base_shape - _DensityThreshold, 0.0f) * _DensityMulti;
+                // const float height_gradient = saturate(remap(height_percent, 0.0f, 0.2f, 0.0f, 1.0f)) * saturate(remap(height_percent, 1.0f, 0.7f, 0.0f, 1.0f));
+                // float base_shape = generate_base_shape(shape_noise);
+                // base_shape *= alter_shape_height(height_percent, peaks);
+
+                //return max(d - _DensityThreshold, 0.0f) * _DensityMulti;
             }
 
             // -----------------------------------------------------

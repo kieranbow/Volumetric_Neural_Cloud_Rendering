@@ -66,13 +66,13 @@ Material:
     - _CloudAmp: 1
     - _CloudFreq: 1
     - _CloudOffset: 0.1
-    - _CloudScale: 20
+    - _CloudScale: 59
     - _Coverage: 0.5
     - _Cutoff: 0.5
     - _DensityMulti: 1
-    - _DensityThreshold: 0.428
+    - _DensityThreshold: 0
     - _DetailNormalMapScale: 1
-    - _DetailScale: 12.7
+    - _DetailScale: 59.6
     - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5
@@ -89,8 +89,9 @@ Material:
     - _UVSec: 0
     - _ZWrite: 1
     - _cloudtype: 1
-    - _coverage: 0.5
-    - _mapScale: 50
+    - _coverage: 1
+    - _globalCoverage: 1
+    - _mapScale: 100
     - _test: -1.6
     m_Colors:
     - _CloudOffset: {r: 0, g: 0, b: 0, a: 0}
