@@ -13,6 +13,7 @@ public class RenderImage : MonoBehaviour
     [SerializeField] public Transform box;
     [FormerlySerializedAs("volumeTexture3D")] [SerializeField] public Texture3D shapeTexture3D;
     [SerializeField] public Texture3D detailTexture3D;
+    [SerializeField] public Texture2D weatherTexture2D;
     private void Start()
     {
         // Presuming there is only 1 camera and that is the main camera, set the depth buffers
@@ -43,6 +44,7 @@ public class RenderImage : MonoBehaviour
         material.SetVector("_BoundsMax", position + localScale / 2);
         material.SetTexture("Shape_tex", shapeTexture3D);
         material.SetTexture("Noise_tex", detailTexture3D);
+        material.SetTexture("Weather_tex", weatherTexture2D);
         
         Graphics.Blit(source, destination, material);
     }

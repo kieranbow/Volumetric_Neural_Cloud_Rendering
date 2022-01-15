@@ -402,8 +402,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 839790539}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -1}
-  m_LocalScale: {x: 100.168, y: 22.203035, z: 72.06732}
+  m_LocalPosition: {x: 0, y: 15.1, z: -1}
+  m_LocalScale: {x: 100.168, y: 114.26347, z: 72.06732}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 2
@@ -509,6 +509,7 @@ MonoBehaviour:
   box: {fileID: 839790543}
   shapeTexture3D: {fileID: 11700000, guid: 7b0ea2bcaf3467847a965df5b060007e, type: 2}
   detailTexture3D: {fileID: 11700000, guid: f938ef82f2419c546a8989bcaf9b63dc, type: 2}
+  weatherTexture2D: {fileID: 2800000, guid: 2f9b3f6428acad340be426a68a131e92, type: 3}
 --- !u!1 &1157529413
 GameObject:
   m_ObjectHideFlags: 0

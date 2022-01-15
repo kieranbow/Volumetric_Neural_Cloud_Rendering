@@ -1,14 +1,8 @@
 // -----------------------------------------------
 // Helper Function
 static float pi = 3.14159265359f;
-
-struct light_data
-{
-    float in_scattering;
-    float out_scattering;
-    float silver_lining_intensity;
-    float silver_lining_exp;
-};
+#define MIN 0.0f
+#define MAX 1.0f
 
 // Function from: http://advances.realtimerendering.com/s2017/Nubis%20-%20Authoring%20Realtime%20Volumetric%20Cloudscapes%20with%20the%20Decima%20Engine%20-%20Final%20.pdf
 float remap(const float value, const float old_min, const float old_max, const float new_min, const float new_max)
@@ -35,29 +29,18 @@ float beer_law(const float density)
     return exp(-density);
 }
 
-float in_out_scattering(const float cos_angle, const light_data light_data, const float contrast)
-{
-    const float hg1 = henyey_Greenstein(cos_angle, light_data.in_scattering);
-    const float hg2 = light_data.silver_lining_intensity * pow(saturate(cos_angle), light_data.silver_lining_exp);
-
-    const float hg_in_scattering = max(hg1, hg2);
-    const float hg_out_scattering = henyey_Greenstein(cos_angle, -light_data.out_scattering);
-
-    return lerp(hg_in_scattering, hg_out_scattering, contrast);
-}
-
 float height_signal(float height_percent, float4 weather_map)
 {
     float height = saturate(remap(height_percent, 0.0f, 0.07f, 0.0f, 1.0f));
-    float end_height = saturate(weather_map.b + 0.12);
-    height *= saturate(remap(height_percent, end_height * 0.2, end_height, 1.0f, 0.0f));
+    float end_height = saturate(weather_map.b + 0.12f);
+    height *= saturate(remap(height_percent, end_height * 0.2f, end_height, 1.0f, 0.0f));
     height = pow(height, saturate(remap(height_percent, 0.65f, 0.95f, 1.0f, 0.5f * 0.8f)));
     return height;
 }
 
-float4 generate_fbm(float4 noise)
+float generate_fbm(float4 noise)
 {
-    return (noise.g * 0.625f) + (noise.b * 0.25f) + (noise.a * 0.125f);
+    return noise.g * 0.625f + noise.b * 0.25f + noise.a * 0.125f;
 }
 
 float4 gradient_mix(const float cloud_type)
@@ -77,4 +60,75 @@ float density_height_gradient(float height_fraction, float cloud_type)
 {
     float4 cloud_gradient = gradient_mix(cloud_type);
     return smoothstep(cloud_gradient.x, cloud_gradient.y, height_fraction) - smoothstep(cloud_gradient.z, cloud_gradient.w, height_fraction);
+}
+
+float calculate_height_percentage(float3 position, float3 bound_min, float3 bound_size)
+{
+    return (position.y - bound_min.y) / bound_size.y;
+}
+
+float getCoverage(float3 weather_map)
+{
+    return weather_map.r;
+}
+
+float getCloud_type(float3 weather_map)
+{
+    return weather_map.g;
+}
+
+float getPrecipitation(float3 weather_map)
+{
+    return weather_map.b;
+}
+
+float height_fraction(float3 position, float2 cloud_minmax)
+{
+    return saturate((position.z - cloud_minmax.x) / (cloud_minmax.y + cloud_minmax.x));
+}
+
+float density_gradient_height(float height, float cloud_type)
+{
+    float cumulus = max(remap(height, 0.01f, 0.3f, 0.0f, 1.0f) * remap(height, 0.6f, 0.95f, 1.0f, 0.0f), 0.0f);
+    float stratocumulus = max(remap(height, 0.0f, 0.25f, 0.0f, 1.0f) * remap(height, 0.3f, 0.65f, 1.0f, 0.0f), 0.0f);
+    float stratus = max(remap(height, 0.0f, 0.1f, 0.0f, 1.0f) * remap(height, 0.2f, 0.3f, 1.0f, 0.0f), 0.0f);
+
+    float a = lerp(stratus, stratocumulus, clamp(cloud_type * 2.0f, 0.0f, 1.0f));
+    float b = lerp(stratocumulus, stratus, clamp((cloud_type - 0.5f) * 2.0f, 0.0f, 1.0f));
+    return lerp(a, b, cloud_type);
+}
+
+
+
+float normalize_weather_map(float4 weather_map, float global_coverage)
+{
+    return max(weather_map.r, saturate(global_coverage - 0.5f) * weather_map.g * 2.0f);
+}
+
+float alter_shape_height(float height_percent, float weather_height)
+{
+    float bottom_round_clouds = saturate(remap(height_percent, 0.0f, 0.07f, MIN, MAX));
+    float top_round_clouds = saturate(remap(height_percent, weather_height * 0.2f, weather_height, MAX, MIN));
+    return bottom_round_clouds * top_round_clouds;
+}
+
+float alter_density_height(float height_percent, float weather_density, float global_density)
+{
+    float reduce_density = height_percent * saturate(remap(height_percent, MIN, 0.15f, MIN, MAX));
+    float soft_transition = saturate(remap(height_percent, 0.9f, MAX, MAX, MIN));
+    return global_density * reduce_density * soft_transition * weather_density * 2.0f;
+}
+
+float generate_base_shape(float4 shape)
+{
+    float base_shape = generate_fbm(shape);
+    base_shape = -(1.0f - base_shape);
+    return remap(shape.r, base_shape, MAX, MIN, MAX);
+}
+
+float function_name(float shape, float global_coverage, float weather_map, float shape_altered, float density_altered)
+{
+    float sa = shape_altered;
+    float da = density_altered;
+    return saturate(remap(shape * sa, 1.0f - global_coverage * weather_map, MAX, MIN, MAX)) * da;
 }
