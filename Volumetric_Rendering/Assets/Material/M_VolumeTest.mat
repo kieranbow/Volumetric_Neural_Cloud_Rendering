@@ -59,6 +59,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _weatherTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _Alpha: 0.2
@@ -66,13 +70,13 @@ Material:
     - _CloudAmp: 1
     - _CloudFreq: 1
     - _CloudOffset: 0.1
-    - _CloudScale: 59
+    - _CloudScale: 100
     - _Coverage: 0.5
     - _Cutoff: 0.5
     - _DensityMulti: 1
     - _DensityThreshold: 0
     - _DetailNormalMapScale: 1
-    - _DetailScale: 59.6
+    - _DetailScale: 223
     - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5
@@ -91,10 +95,10 @@ Material:
     - _cloudtype: 1
     - _coverage: 1
     - _globalCoverage: 1
-    - _mapScale: 100
+    - _mapScale: 500
     - _test: -1.6
     m_Colors:
-    - _CloudOffset: {r: 0, g: 0, b: 0, a: 0}
+    - _CloudOffset: {r: 42.22, g: 2.97, b: 2.52, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DetailOffset: {r: 0, g: 0, b: 0, a: 0}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}

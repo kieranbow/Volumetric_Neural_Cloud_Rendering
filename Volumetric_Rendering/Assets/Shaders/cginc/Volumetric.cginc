@@ -7,7 +7,6 @@ static float pi = 3.14159265359f;
 // Function from: http://advances.realtimerendering.com/s2017/Nubis%20-%20Authoring%20Realtime%20Volumetric%20Cloudscapes%20with%20the%20Decima%20Engine%20-%20Final%20.pdf
 float remap(const float value, const float old_min, const float old_max, const float new_min, const float new_max)
 {
-    //  return new_min + (value - old_min) * (new_max - new_min) / (old_max - old_min);
     return new_min + (((value - old_min) / (old_max - old_min)) * (new_max - new_min));
 }
 
@@ -124,11 +123,4 @@ float generate_base_shape(float4 shape)
     float base_shape = generate_fbm(shape);
     base_shape = -(1.0f - base_shape);
     return remap(shape.r, base_shape, MAX, MIN, MAX);
-}
-
-float function_name(float shape, float global_coverage, float weather_map, float shape_altered, float density_altered)
-{
-    float sa = shape_altered;
-    float da = density_altered;
-    return saturate(remap(shape * sa, 1.0f - global_coverage * weather_map, MAX, MIN, MAX)) * da;
 }
