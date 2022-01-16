@@ -21,8 +21,17 @@ Shader "Custom/Volumetric_clouds"
         
         [Header(Cloud appearance)]
         [Space(10)]
-        _cloudtype ("cloudtype", Range(0, 1)) = 1.0
         _globalCoverage ("Cloud coverage", Range(0, 1)) = 0.5
+        _in_scattering ("In Scattering", Range(0, 1)) = 0.0
+        _out_scattering ("Out Scattering", Range(0, 1)) = 0.0
+        _in_out_scattering ("In Out Scattering bias", Range(0, 1)) = 0.0
+        _silver_line_intensity ("Silver Lining Intensity", Range(0, 1)) = 0.0
+        _silver_line_exp ("Silver Lining Exponent", Range(0, 1)) = 0.0
+        _cloud_beer ("Beer amount", Range(0, 1)) = 0.0
+        _density_to_sun ("Density to sun", Range(0, 1)) = 0.0
+        _cloud_attenuation ("Attenuation", Range(0, 1)) = 0.0
+        _out_scattering_ambient ("Outscattering ambients", Range(0, 1)) = 0.0
+            
         
         [Header(Weather Map)]
         [Space(10)]
@@ -97,7 +106,9 @@ Shader "Custom/Volumetric_clouds"
 
             float4 _CloudOffset, _DetailOffset;
             float3 _BoundsMin, _BoundsMax;
-            float _CloudScale, _DensityThreshold, _DensityMulti, _mapScale, _cloudtype, _globalCoverage, _DetailScale;
+            float _CloudScale, _DensityThreshold, _DensityMulti, _mapScale, _globalCoverage, _DetailScale;
+            float _in_scattering, _out_scattering, _in_out_scattering, _silver_line_intensity, _silver_line_exp;
+            float _cloud_beer, _density_to_sun, _cloud_attenuation, _out_scattering_ambient;
             int _NumStep;
             
             float sample_density(float3 position, box bounding_box, float height_percent)
@@ -151,39 +162,27 @@ Shader "Custom/Volumetric_clouds"
                 //return max(d - _DensityThreshold, 0.0f) * _DensityMulti;
             }
 
-            float in_scattering = 0.0f;
-            float out_scattering = 0.0f;
-            float in_out_scattering = 0.0f;
-            float silver_line_intensity = 0.0f;
-            float silver_line_exp = 0.0f;
-
-            float cloud_beer = 0.0f;
-            float density_to_sun = 0.0f;
-            float cloud_attenuation = 0.0f;
-
-            float out_scattering_ambient = 0.0f;
-            
             float3 sample_light(float cos_angle, float height_percentage, float density)
             {
                 // Attenuation
-                float primary = exp(-cloud_beer * density_to_sun);
-                float secondary = exp(-cloud_beer * cloud_attenuation) * 0.7f;
+                float primary = exp(-_cloud_beer * _density_to_sun);
+                float secondary = exp(-_cloud_beer * _cloud_attenuation) * 0.7f;
                 float check = remap(cos_angle, MIN, MAX, secondary, secondary * 0.5f);
                 float attenuation_prob = max(check, primary);
                 
                 // Ambient Out scattering
-                float depth = out_scattering_ambient * pow(density, remap(height_percentage, 0.3f, 0.9f, 0.5f, MAX));
+                float depth = _out_scattering_ambient * pow(density, remap(height_percentage, 0.3f, 0.9f, 0.5f, MAX));
                 float vertical = pow(saturate(remap(height_percentage, MIN, 0.3f, 0.8f, 1.0f)), 0.8f);
                 float out_scatter = depth * vertical;
                 out_scatter = 1.0 - saturate(out_scatter);
                 float ambient_out_scattering = out_scatter;
 
                 // In out scattering
-                float hg1 = henyey_Greenstein(cos_angle, in_scattering);
-                float hg2 = silver_line_intensity * pow(saturate(cos_angle), silver_line_exp);
+                float hg1 = henyey_Greenstein(cos_angle, _in_scattering);
+                float hg2 = _silver_line_intensity * pow(saturate(cos_angle), _silver_line_exp);
                 float hg_inscattering = max(hg1, hg2);
-                float hg_outscattering = henyey_Greenstein(cos_angle, -out_scattering);
-                float inoutscattering = lerp(hg_inscattering, hg_outscattering, in_out_scattering);
+                float hg_outscattering = henyey_Greenstein(cos_angle, -_out_scattering);
+                float inoutscattering = lerp(hg_inscattering, hg_outscattering, _in_out_scattering);
                 float sun_highlight = inoutscattering;
 
                 float attenuation = attenuation_prob * sun_highlight * ambient_out_scattering;
@@ -200,7 +199,7 @@ Shader "Custom/Volumetric_clouds"
                 const float z_depth = LinearEyeDepth(non_linear_depth) * length(i.view_vector);
                 
                 // Ray
-                ray ray;
+                Ray ray;
                 ray.origin = _WorldSpaceCameraPos;
                 ray.direction = normalize(i.view_vector);
 
@@ -224,26 +223,32 @@ Shader "Custom/Volumetric_clouds"
                 const float dist_limit = min(z_depth - dist_to_box, dist_inside_box);
 
                 // Cloud lighting
-                float cos_angle = dot(ray.direction, _WorldSpaceLightPos0.xyz);
+                float3 light_dir = normalize(lerp(_WorldSpaceLightPos0.xyz, _WorldSpaceLightPos0.xyz - ray.origin, _WorldSpaceLightPos0.w));
+                float cos_angle = dot(ray.direction, light_dir);
 
                 float transmittance = 1.0f;
-                float total_density = 0.0f;
                 float3 total_light = float3(0.0f, 0.0f, 0.0f);
+                
                 while (dist_travelled < dist_limit)
                 {
+                    // Sample position
                     const float3 sample_position = ray.origin + ray.direction * (dist_to_box + dist_travelled);
                     
                     // Height Percentage
                     float height_percent = calculate_height_percentage(sample_position, box.bound_min, box.size);
 
 
-                    total_density += sample_density(sample_position, box, height_percent) * step_size;
+                    float density = sample_density(sample_position, box, height_percent);
 
-                    if(total_density > 0.0f)
+                    if(density > 0.0f)
                     {
-                        float light_march = sample_light(cos_angle, height_percent, total_density);
-                        total_light += total_density * step_size * transmittance * light_march;
-                        transmittance *= exp(-total_density * step_size * 0.5f);
+                        Ray light_ray;
+                        light_ray.direction = 1.0f / _WorldSpaceLightPos0.xyz;
+                        light_ray.origin = sample_position;
+
+                        float light_march = sample_light(cos_angle, height_percent, density);
+                        total_light += density * transmittance * light_march;
+                        transmittance *= exp(-density * 0.9f);
 
                         if (transmittance < 0.01f)
                         {

@@ -76,7 +76,7 @@ Material:
     - _DensityMulti: 1
     - _DensityThreshold: 0
     - _DetailNormalMapScale: 1
-    - _DetailScale: 223
+    - _DetailScale: 246
     - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5
@@ -92,10 +92,19 @@ Material:
     - _StepSize: 0.06
     - _UVSec: 0
     - _ZWrite: 1
+    - _cloud_attenuation: 0
+    - _cloud_beer: 0
     - _cloudtype: 1
     - _coverage: 1
+    - _density_to_sun: 0
     - _globalCoverage: 1
+    - _in_out_scattering: 0.5
+    - _in_scattering: 0.2
     - _mapScale: 500
+    - _out_scattering: 0.3
+    - _out_scattering_ambient: 0.5
+    - _silver_line_exp: 0
+    - _silver_line_intensity: 0
     - _test: -1.6
     m_Colors:
     - _CloudOffset: {r: 42.22, g: 2.97, b: 2.52, a: 0}

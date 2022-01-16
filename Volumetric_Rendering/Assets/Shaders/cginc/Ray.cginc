@@ -1,4 +1,4 @@
-struct ray
+struct Ray
 {
 	float3 origin;
 	float3 direction;
@@ -8,7 +8,7 @@ struct ray
 // Helper Functions
 
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
-float2 ray_box_dist(const float3 bound_min, const float3 bound_max, const ray ray)
+float2 ray_box_dist(const float3 bound_min, const float3 bound_max, const Ray ray)
 {
 	const float3 t0 = (bound_min - ray.origin) / ray.direction;
 	const float3 t1 = (bound_max - ray.origin) / ray.direction;
@@ -25,7 +25,7 @@ float2 ray_box_dist(const float3 bound_min, const float3 bound_max, const ray ra
 	return float2(dist_to_box, dist_inside_box);
 }
 // Function from: http://www.cse.chalmers.se/~uffe/xjobb/RurikH%C3%B6gfeldt.pdf, Algorithm 5.2
-float3 ray_sphere(const float3 pos, const float radius, const ray ray, const float3 cam_pos)
+float3 ray_sphere(const float3 pos, const float radius, const Ray ray, const float3 cam_pos)
 {
 	const float3 a = dot(ray.direction, ray.direction) * 2.0f;
 	const float3 b = dot(ray.direction, ray.origin) * 2.0f;
