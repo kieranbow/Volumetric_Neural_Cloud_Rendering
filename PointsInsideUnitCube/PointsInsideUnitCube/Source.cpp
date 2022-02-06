@@ -69,18 +69,39 @@ int main()
 {
 	// This file will generate a set of points within a unit cube
 
-	pScene = importer.ReadFile("Something here", aiProcess_JoinIdenticalVertices | aiProcess_Triangulate);
+	std::string file_path = "Assets\\Unit_Cube.obj";
 
+	pScene = importer.ReadFile(file_path, aiProcess_JoinIdenticalVertices | aiProcess_Triangulate);
+
+	// Checks to see if aiScene is valid before loading the mesh
 	if (pScene == NULL)
 	{
-		std::cout << "Pointer to scene is null";
+		std::cout << "Pointer to scene is null\n";
 		return 0;
 	}
 
+	// Checks to see if the mesh could be loaded
 	if (!LoadMeshData(vertices, indices))
 	{
-		std::cout << "Mesh could not be loaded";
+		std::cout << "Mesh from (" + file_path + ") could not be loaded\n";
 		return 0;
+	}
+	else
+	{
+		std::cout << "Mesh from (" + file_path + ") successfully loaded\n";
+		std::cout << "Mesh data:\n";
+		std::cout << "Vertex count: " + std::to_string(vertices.size()) + "\n";
+		std::cout << "Indices count: " + std::to_string(indices.size()) + "\n";
+
+		for (int i = 0; i < vertices.size(); i++)
+		{
+			int x = vertices.at(i).position.x;
+			int y = vertices.at(i).position.y;
+			int z = vertices.at(i).position.z;
+
+			std::string position = std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z);
+			std::cout << "Vertex[" + std::to_string(i) + "] position: " + position + "\n";
+		}
 	}
 
 	return 0;

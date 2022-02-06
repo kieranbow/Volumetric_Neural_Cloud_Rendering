@@ -1,15 +1,15 @@
 ﻿  Source.cpp
+D:\My Documents\Github\Year 3\Dissertation\Volumetric_Neural_Cloud_Rendering\PointsInsideUnitCube\PointsInsideUnitCube\Source.cpp(46,48): warning C4244: '=': conversion from 'TReal' to 'int', possible loss of data
+          with
+          [
+              TReal=ai_real
+          ]
 D:\My Documents\Github\Year 3\Dissertation\Volumetric_Neural_Cloud_Rendering\PointsInsideUnitCube\PointsInsideUnitCube\Source.cpp(47,48): warning C4244: '=': conversion from 'TReal' to 'int', possible loss of data
           with
           [
               TReal=ai_real
           ]
 D:\My Documents\Github\Year 3\Dissertation\Volumetric_Neural_Cloud_Rendering\PointsInsideUnitCube\PointsInsideUnitCube\Source.cpp(48,48): warning C4244: '=': conversion from 'TReal' to 'int', possible loss of data
-          with
-          [
-              TReal=ai_real
-          ]
-D:\My Documents\Github\Year 3\Dissertation\Volumetric_Neural_Cloud_Rendering\PointsInsideUnitCube\PointsInsideUnitCube\Source.cpp(49,48): warning C4244: '=': conversion from 'TReal' to 'int', possible loss of data
           with
           [
               TReal=ai_real
