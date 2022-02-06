@@ -28,10 +28,10 @@ Shader "Custom/Volumetric_clouds"
         _silver_line_intensity ("Silver Lining Intensity", Range(0, 1)) = 0.0
         _silver_line_exp ("Silver Lining Exponent", Range(0, 1)) = 0.0
         _cloud_beer ("Beer amount", Range(0, 1)) = 0.0
-        _density_to_sun ("Density to sun", Range(0, 1)) = 0.0
+        _density_to_sun ("Density to sun", Range(0, 10)) = 0.0
         _cloud_attenuation ("Attenuation", Range(0, 1)) = 0.0
         _out_scattering_ambient ("Outscattering ambients", Range(0, 1)) = 0.0
-            
+        _param ("Cloud brightness", Range(0, 1)) = 0.5
         
         [Header(Weather Map)]
         [Space(10)]
@@ -108,7 +108,7 @@ Shader "Custom/Volumetric_clouds"
             float3 _BoundsMin, _BoundsMax;
             float _CloudScale, _DensityThreshold, _DensityMulti, _mapScale, _globalCoverage, _DetailScale;
             float _in_scattering, _out_scattering, _in_out_scattering, _silver_line_intensity, _silver_line_exp;
-            float _cloud_beer, _density_to_sun, _cloud_attenuation, _out_scattering_ambient;
+            float _cloud_beer, _density_to_sun, _cloud_attenuation, _out_scattering_ambient, _param;
             int _NumStep;
             
             float sample_density(float3 position, box bounding_box, float height_percent)
@@ -233,7 +233,7 @@ Shader "Custom/Volumetric_clouds"
                 {
                     // Sample position
                     const float3 sample_position = ray.origin + ray.direction * (dist_to_box + dist_travelled);
-                    
+
                     // Height Percentage
                     float height_percent = calculate_height_percentage(sample_position, box.bound_min, box.size);
 
@@ -248,14 +248,19 @@ Shader "Custom/Volumetric_clouds"
 
                         float light_march = sample_light(cos_angle, height_percent, density);
                         total_light += density * transmittance * light_march;
-                        transmittance *= exp(-density * 0.9f);
+                        transmittance *= exp(-density * _param);
 
                         if (transmittance < 0.01f)
                         {
                             break;
                         }
+
+                        if (transmittance > 1.0f)
+                        {
+                            break;
+                        }
                     }
-                    
+
                     dist_travelled += step_size;
                 }
 
