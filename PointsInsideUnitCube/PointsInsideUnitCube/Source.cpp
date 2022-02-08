@@ -4,6 +4,7 @@
 // C++ includes
 #include <vector>
 #include <iostream>
+#include <random>
 
 // Assimp
 #include <assimp\Importer.hpp>
@@ -19,6 +20,45 @@ struct Vector3
 {
 	Vector3() {}
 	Vector3(float _x, float _y, float _z) : x(_x), y(_y), z(_z) {}
+
+	// Adds two vectors together
+	Vector3 operator+(const Vector3& a)
+	{
+		Vector3 vector3;
+		vector3.x = this->x + a.x;
+		vector3.y = this->y + a.y;
+		vector3.z = this->z + a.z;
+		return vector3;
+	}
+
+	// Subtracts two vector
+	Vector3 operator-(const Vector3& a)
+	{
+		Vector3 vector3;
+		vector3.x = this->x - a.x;
+		vector3.y = this->y - a.y;
+		vector3.z = this->z - a.z;
+		return vector3;
+	}
+
+	Vector3 operator*(const Vector3& a)
+	{
+		Vector3 vector3;
+		vector3.x = this->x * a.x;
+		vector3.y = this->y * a.y;
+		vector3.z = this->z * a.z;
+		return vector3;
+	}
+
+	Vector3 operator/(const Vector3& a)
+	{
+		Vector3 vector3;
+		vector3.x = this->x / a.x;
+		vector3.y = this->y / a.y;
+		vector3.z = this->z / a.z;
+		return vector3;
+	}
+
 	float x = 0.0f;
 	float y = 0.0f;
 	float z = 0.0f;
@@ -33,6 +73,9 @@ struct Vertex
 
 struct Ray
 {
+	Ray() {}
+	Ray(Vector3 _origin, Vector3 _direction) : origin(_origin), direction(_direction) {}
+
 	Vector3 origin = { 0.0f, 0.0f, 0.0f };
 	Vector3 direction = { 0.0f, 0.0f, 0.0f };
 	float t = 0; // Ray origin to point
@@ -181,6 +224,35 @@ bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, fl
 	return true;
 }
 
+// Generate a number from min and max
+int uniformDistribution(int min, int max)
+{
+	std::default_random_engine random_engine(static_cast<unsigned int>(std::random_device{}()));
+	std::uniform_int_distribution<> dis(min, max);
+	int gen_number = dis(random_engine);
+	return gen_number;
+}
+
+// Generate a position using uniform Distribution between min and max
+Vector3 generate_random_position(int min, int max)
+{
+	Vector3 position;
+	position.x = static_cast<float>(uniformDistribution(min, max));
+	position.y = static_cast<float>(uniformDistribution(min, max));
+	position.z = static_cast<float>(uniformDistribution(min, max));
+	return position;
+}
+
+// Generate a direction using uniform Distribution between min and max
+Vector3 generate_random_direction(int min, int max)
+{
+	Vector3 direction;
+	direction.x = static_cast<float>(uniformDistribution(min, max));
+	direction.y = static_cast<float>(uniformDistribution(min, max));
+	direction.z = static_cast<float>(uniformDistribution(min, max));
+	return direction;
+}
+
 int main()
 {
 	std::string file_path = "Assets\\Unit_Cube.obj";
@@ -208,15 +280,15 @@ int main()
 		std::cout << "Indices count: "	+ std::to_string(indices.size()) + "\n";
 		std::cout << "Triangle count: "	+ std::to_string(indices.size() / 3) + "\n\n"; // 3 indices make a triangle
 
-		for (int i = 0; i < vertices.size(); i++)
-		{
-			float x = vertices.at(i).position.x;
-			float y = vertices.at(i).position.y;
-			float z = vertices.at(i).position.z;
+		//for (int i = 0; i < vertices.size(); i++)
+		//{
+		//	float x = vertices.at(i).position.x;
+		//	float y = vertices.at(i).position.y;
+		//	float z = vertices.at(i).position.z;
 
-			std::string position = std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z);
-			std::cout << "Vertex[" + std::to_string(i) + "] position: " + position + "\n";
-		}
+		//	std::string position = std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z);
+		//	std::cout << "Vertex[" + std::to_string(i) + "] position: " + position + "\n";
+		//}
 
 		//for (int i = 0; i < indices.size(); i += 3)
 		//{
@@ -244,6 +316,23 @@ int main()
 	test_ray.origin = { -2.0f, -0.25f, 0.45f };
 	test_ray.direction = { 1.0f, 0.0f, 0.0f };
 
+	Vector3 world_origin(0.0f, 0.0f, 0.0f);
+	
+	std::vector<Ray> rays;
+
+	// Generate a set of rays with different origins and directions
+	for (int i = 0; i < 10; i++)
+	{
+		Ray ray;
+		ray.origin = generate_random_position(-1, 5);
+		ray.direction = generate_random_direction(-1, 5) - world_origin;
+		rays.push_back(ray);
+	}
+
+	size_t total = rays.size() * (indices.size() / 3);
+	int hit = 0;
+
+	// Loop through all triangles within the mesh and test if a ray has hit it
 	for (int i = 0; i < indices.size(); i += 3)
 	{
 		int vertex_idx_1 = indices.at(i);
@@ -260,24 +349,42 @@ int main()
 		
 		int idx = (i / 3);
 
-		if (intersect_triangle(test_ray, vert0, vert1, vert2, t, u, v, false))
+		// Loop through all rays and check if any hit the triangle.
+		for (int j = 0; j < rays.size(); j++)
 		{
-			std::cout << "Hit Triangle [" + std::to_string(idx) + "]\n";
-
-			//std::string vertex_1_pos = std::to_string(vert0.x) + ", \t" + std::to_string(vert0.y) + ", \t" + std::to_string(vert0.z);
-			//std::string vertex_2_pos = std::to_string(vert1.x) + ", \t" + std::to_string(vert1.y) + ", \t" + std::to_string(vert1.z);
-			//std::string vertex_3_pos = std::to_string(vert2.x) + ", \t" + std::to_string(vert2.y) + ", \t" + std::to_string(vert2.z);
-
-			//std::cout << "Vertex 1: " + vertex_1_pos + "\n";
-			//std::cout << "Vertex 2: " + vertex_2_pos + "\n";
-			//std::cout << "Vertex 3: " + vertex_3_pos + "\n";
-
+			if (intersect_triangle(rays.at(j), vert0, vert1, vert2, t, u, v, false))
+			{
+				std::cout << "Ray[" + std::to_string(j) + "] hit Triangle" + "\t [" + std::to_string(idx) + "]\n";
+				hit++;
+			}
+			else
+			{
+				std::cout << "Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
+			}
 		}
-		else
-		{
-			std::cout << "Miss Triangle [" + std::to_string(idx) + "]\n";
-		}
+
+		std::cout << "-------------------------------------\n";
+
+		//if (intersect_triangle(test_ray, vert0, vert1, vert2, t, u, v, false))
+		//{
+		//	std::cout << "Ray [] Hit Triangle [" + std::to_string(idx) + "]\n";
+
+		//	//std::string vertex_1_pos = std::to_string(vert0.x) + ", \t" + std::to_string(vert0.y) + ", \t" + std::to_string(vert0.z);
+		//	//std::string vertex_2_pos = std::to_string(vert1.x) + ", \t" + std::to_string(vert1.y) + ", \t" + std::to_string(vert1.z);
+		//	//std::string vertex_3_pos = std::to_string(vert2.x) + ", \t" + std::to_string(vert2.y) + ", \t" + std::to_string(vert2.z);
+
+		//	//std::cout << "Vertex 1: " + vertex_1_pos + "\n";
+		//	//std::cout << "Vertex 2: " + vertex_2_pos + "\n";
+		//	//std::cout << "Vertex 3: " + vertex_3_pos + "\n";
+
+		//}
+		//else
+		//{
+		//	std::cout << "Miss Triangle [" + std::to_string(idx) + "]\n";
+		//}
 	}
+
+	std::cout << std::to_string(hit) + "/" + std::to_string(total) + "\n";
 
 	return 0;
 }
