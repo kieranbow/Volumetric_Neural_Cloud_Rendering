@@ -16,6 +16,7 @@
 
 // Defines
 constexpr float epsilon = 0.000001f;
+constexpr int max_num_rays = 10;
 
 using Indices = unsigned short;
 
@@ -92,6 +93,7 @@ struct Ray
 	Vector3 direction = { 0.0f, 0.0f, 0.0f };
 	float t = 0.0f; // Ray origin to point
 	int hit = 0;
+	std::string name = "";
 };
 
 Assimp::Importer importer;
@@ -283,31 +285,42 @@ int main()
 		//}
 	}
 
-	Ray x_ray;
-	x_ray.origin = { -2.0f, -0.25f, 0.45f };
-	x_ray.direction = { 1.0f, 0.0f, 0.0f };
-
 	std::vector<Ray> rays;
 
-	// Generate a set of rays with different origins and directions
-	for (int i = 0; i < 10; i++)
+	// Generate a set of rays at each axis with different origins
+	for (int i = 0; i < max_num_rays; i++) // x axis rays
 	{
 		Ray ray;
 		ray.origin = {-2.0f, uniform_real_distribution(-0.5f, 0.5f), uniform_real_distribution(-0.5f, 0.5f) };
 		ray.direction = { 1.0f, 0.0f, 0.0f };
+		ray.name = "x-axis";
+		rays.push_back(ray);
+	}
+	for (int i = 0; i < max_num_rays; i++) // y axis rays
+	{
+		Ray ray;
+		ray.origin = { uniform_real_distribution(-0.5f, 0.5f) , -2.0f,  uniform_real_distribution(-0.5f, 0.5f) };
+		ray.direction = { 0.0f, 1.0f, 0.0f };
+		ray.name = "y-axis";
+		rays.push_back(ray);
+	}
+	for (int i = 0; i < max_num_rays; i++) // z axis rays
+	{
+		Ray ray;
+		ray.origin = { uniform_real_distribution(-0.5f, 0.5f) , uniform_real_distribution(-0.5f, 0.5f),  -2.0f };
+		ray.direction = { 0.0f, 0.0f, 1.0f };
+		ray.name = "z-axis";
 		rays.push_back(ray);
 	}
 
-	size_t total = rays.size() * (indices.size() / 3);
-	int hit = 0;
-
-	// Loop through all triangles within the mesh and test if a ray has hit it
+	// Loop through all triangles within the mesh and test if the rays has hit it
 	for (int i = 0; i < indices.size(); i += 3)
 	{
 		int vertex_idx_1 = indices.at(i);
 		int vertex_idx_2 = indices.at(i + 1);
 		int vertex_idx_3 = indices.at(i + 2);
 
+		// Get the three vertices of a triangle
 		Vector3 vert0 = vertices.at(vertex_idx_1).position;
 		Vector3 vert1 = vertices.at(vertex_idx_2).position;
 		Vector3 vert2 = vertices.at(vertex_idx_3).position;
@@ -323,53 +336,31 @@ int main()
 		{
 			if (intersect_triangle(rays.at(j), vert0, vert1, vert2, t, u, v))
 			{
-				float uv = u + v;
-
-				std::cout << "Ray[" + std::to_string(j) + "] hit Triangle" + "\t [" + std::to_string(idx) + "] \t uv: " + std::to_string(uv) + "\n";
-				hit++;
+				std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] hit Triangle" + "\t [" + std::to_string(idx) + "]\n";
 				rays.at(j).hit += 1;
 			}
 			else
 			{
-				std::cout << "Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
+				std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
 			}
 		}
 		std::cout << "-------------------------------------\n";
-
-		//if (intersect_triangle(x_ray, vert0, vert1, vert2, t, u, v))
-		//{
-		//	std::cout << "Hit Triangle [" + std::to_string(idx) + "]\n";
-
-		//	//std::string vertex_1_pos = std::to_string(vert0.x) + ", \t" + std::to_string(vert0.y) + ", \t" + std::to_string(vert0.z);
-		//	//std::string vertex_2_pos = std::to_string(vert1.x) + ", \t" + std::to_string(vert1.y) + ", \t" + std::to_string(vert1.z);
-		//	//std::string vertex_3_pos = std::to_string(vert2.x) + ", \t" + std::to_string(vert2.y) + ", \t" + std::to_string(vert2.z);
-
-		//	//std::cout << "Vertex 1: " + vertex_1_pos + "\n";
-		//	//std::cout << "Vertex 2: " + vertex_2_pos + "\n";
-		//	//std::cout << "Vertex 3: " + vertex_3_pos + "\n";
-
-		//}
-		//else
-		//{
-		//	std::cout << "Miss Triangle [" + std::to_string(idx) + "]\n";
-		//}
 	}
 
-	//for (auto& ray : rays)
-	//{
-	//	if (ray.hit % 2)
-	//	{
-	//		std::cout << "water tight mesh\n";
-	//	}
-	//	else
-	//	{
-	//		std::cout << "not water tight mesh\n";
-	//	}
-
-	//	std::cout << std::to_string(ray.hit) + "\n";
-	//}
-
-	//std::cout << std::to_string(hit) + "/" + std::to_string(total) + "\n";
-
+	// Loop through all rays and check if the number of hits made is equal to 2
+	// This is to check if the mesh is water tight so that points can be generated inside the mesh
+	for (auto& ray : rays)
+	{
+		if (ray.hit % 2 == 0) // is even
+		{
+			std::cout << ray.name + " hit: " + std::to_string(ray.hit);
+			std::cout << "water tight mesh\n";
+		}
+		else // is odd
+		{
+			std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
+			std::cout << " not water tight mesh\n";
+		}
+	}
 	return 1;
 }
