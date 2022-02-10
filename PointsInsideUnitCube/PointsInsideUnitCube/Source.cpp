@@ -14,6 +14,9 @@
 #include <assimp\matrix4x4.h>
 #include <assimp\cimport.h>
 
+//#define DEBUG
+#define MESHDATA
+
 // Defines
 constexpr float epsilon = 0.000001f;
 constexpr int max_num_rays = 10;
@@ -247,11 +250,14 @@ int main()
 	}
 	else
 	{
-		std::cout << "Mesh from (" + file_path + ") successfully loaded\n";
-		std::cout << "Mesh data:\n";
-		std::cout << "Vertex count: "	+ std::to_string(vertices.size()) + "\n";
-		std::cout << "Indices count: "	+ std::to_string(indices.size()) + "\n";
-		std::cout << "Triangle count: "	+ std::to_string(indices.size() / 3) + "\n\n"; // 3 indices make a triangle
+		#ifdef MESHDATA
+			std::cout << "Mesh from (" + file_path + ") successfully loaded\n";
+			std::cout << "Mesh data:\n";
+			std::cout << "Vertex count: " + std::to_string(vertices.size()) + "\n";
+			std::cout << "Indices count: " + std::to_string(indices.size()) + "\n";
+			std::cout << "Triangle count: " + std::to_string(indices.size() / 3) + "\n\n"; // 3 indices make a triangle
+		#endif // MESHDATA
+
 
 		//for (int i = 0; i < vertices.size(); i++)
 		//{
@@ -336,30 +342,45 @@ int main()
 		{
 			if (intersect_triangle(rays.at(j), vert0, vert1, vert2, t, u, v))
 			{
-				std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] hit Triangle" + "\t [" + std::to_string(idx) + "]\n";
 				rays.at(j).hit += 1;
+
+				#ifdef DEBUG
+					std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] hit Triangle" + "\t [" + std::to_string(idx) + "]\n";
+				#endif // DEBUG
 			}
 			else
 			{
-				std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
+				#ifdef DEBUG
+					std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
+				#endif // DEBUG
 			}
 		}
-		std::cout << "-------------------------------------\n";
 	}
 
+	int hit = 0;
+
 	// Loop through all rays and check if the number of hits made is equal to 2
-	// This is to check if the mesh is water tight so that points can be generated inside the mesh
+	// If the rays hit an even number of triangles. Mesh is water tight
+	// If the rays hit an odd number of triangles. Mesh is not water tight
 	for (auto& ray : rays)
 	{
 		if (ray.hit % 2 == 0) // is even
 		{
-			std::cout << ray.name + " hit: " + std::to_string(ray.hit);
-			std::cout << "water tight mesh\n";
+			#ifdef DEBUG
+				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
+			#endif // _DEBUG
+
+			hit++;
 		}
 		else // is odd
 		{
-			std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
-			std::cout << " not water tight mesh\n";
+			#ifdef DEBUG
+				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
+			#endif // DEBUG
+		}
+		if (hit == rays.size())
+		{
+			std::cout << "Mesh is water tight\n";
 		}
 	}
 	return 1;
