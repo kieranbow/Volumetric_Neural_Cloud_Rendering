@@ -151,8 +151,7 @@ bool LoadMeshData(std::vector<Vertex>& _vertices, std::vector<Indices>& _indices
 	return true;
 }
 
-// Moller & Trumbore Ray-triangle intersection
-// https://cadxfem.org/inf/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
+// Moller & Trumbore Ray-triangle intersection https://cadxfem.org/inf/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
 bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, float& t, float& u, float& v)
 {
 	// https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
@@ -178,18 +177,18 @@ bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, fl
 	Vector3 tvec = ray.origin - vert0;
 
 	// Calculate U parameter and test bounds
-	u = dot_product(tvec, pvec) * invDet;
+	u = Vector3::dot(tvec, pvec) * invDet;
 	if (u < 0.0f || u > 1.0f) return false;
 
 	// Prepare to test V parameter
-	Vector3 qvec = cross_product(tvec, v0v1);
+	Vector3 qvec = Vector3::cross(tvec, v0v1);
 
 	// Calculate V parameter and test bounds
-	v = dot_product(ray.direction, qvec) * invDet;
+	v = Vector3::dot(ray.direction, qvec) * invDet;
 	if (v < 0.0f || u + v > 1.0f) return false; // u + v should never be greater than 1
 
 	// Calculate t, ray intersection triangle
-	t = dot_product(v0v2, qvec) * invDet;
+	t = Vector3::dot(v0v2, qvec) * invDet;
 
 	return true;
 }
@@ -295,7 +294,7 @@ int main()
 	{
 		Ray ray;
 		ray.origin = {-2.0f, uniform_real_distribution(-0.5f, 0.5f), uniform_real_distribution(-0.5f, 0.5f) };
-		ray.direction = { 0.0f, 0.0f, 0.0f };
+		ray.direction = { 1.0f, 0.0f, 0.0f };
 		rays.push_back(ray);
 	}
 
@@ -319,41 +318,41 @@ int main()
 		
 		int idx = (i / 3);
 
-		//// Loop through all rays and check if any hit the triangle.
-		//for (int j = 0; j < rays.size(); j++)
+		// Loop through all rays and check if any hit the triangle.
+		for (int j = 0; j < rays.size(); j++)
+		{
+			if (intersect_triangle(rays.at(j), vert0, vert1, vert2, t, u, v))
+			{
+				float uv = u + v;
+
+				std::cout << "Ray[" + std::to_string(j) + "] hit Triangle" + "\t [" + std::to_string(idx) + "] \t uv: " + std::to_string(uv) + "\n";
+				hit++;
+				rays.at(j).hit += 1;
+			}
+			else
+			{
+				std::cout << "Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
+			}
+		}
+		std::cout << "-------------------------------------\n";
+
+		//if (intersect_triangle(x_ray, vert0, vert1, vert2, t, u, v))
 		//{
-		//	if (intersect_triangle(rays.at(j), vert0, vert1, vert2, t, u, v))
-		//	{
-		//		float uv = u + v;
+		//	std::cout << "Hit Triangle [" + std::to_string(idx) + "]\n";
 
-		//		std::cout << "Ray[" + std::to_string(j) + "] hit Triangle" + "\t [" + std::to_string(idx) + "] \t uv: " + std::to_string(uv) + "\n";
-		//		hit++;
-		//		rays.at(j).hit += 1;
-		//	}
-		//	else
-		//	{
-		//		std::cout << "Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
-		//	}
+		//	//std::string vertex_1_pos = std::to_string(vert0.x) + ", \t" + std::to_string(vert0.y) + ", \t" + std::to_string(vert0.z);
+		//	//std::string vertex_2_pos = std::to_string(vert1.x) + ", \t" + std::to_string(vert1.y) + ", \t" + std::to_string(vert1.z);
+		//	//std::string vertex_3_pos = std::to_string(vert2.x) + ", \t" + std::to_string(vert2.y) + ", \t" + std::to_string(vert2.z);
+
+		//	//std::cout << "Vertex 1: " + vertex_1_pos + "\n";
+		//	//std::cout << "Vertex 2: " + vertex_2_pos + "\n";
+		//	//std::cout << "Vertex 3: " + vertex_3_pos + "\n";
+
 		//}
-		//std::cout << "-------------------------------------\n";
-
-		if (intersect_triangle(x_ray, vert0, vert1, vert2, t, u, v))
-		{
-			std::cout << "Hit Triangle [" + std::to_string(idx) + "]\n";
-
-			//std::string vertex_1_pos = std::to_string(vert0.x) + ", \t" + std::to_string(vert0.y) + ", \t" + std::to_string(vert0.z);
-			//std::string vertex_2_pos = std::to_string(vert1.x) + ", \t" + std::to_string(vert1.y) + ", \t" + std::to_string(vert1.z);
-			//std::string vertex_3_pos = std::to_string(vert2.x) + ", \t" + std::to_string(vert2.y) + ", \t" + std::to_string(vert2.z);
-
-			//std::cout << "Vertex 1: " + vertex_1_pos + "\n";
-			//std::cout << "Vertex 2: " + vertex_2_pos + "\n";
-			//std::cout << "Vertex 3: " + vertex_3_pos + "\n";
-
-		}
-		else
-		{
-			std::cout << "Miss Triangle [" + std::to_string(idx) + "]\n";
-		}
+		//else
+		//{
+		//	std::cout << "Miss Triangle [" + std::to_string(idx) + "]\n";
+		//}
 	}
 
 	//for (auto& ray : rays)
