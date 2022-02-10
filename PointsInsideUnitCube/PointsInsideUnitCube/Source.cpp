@@ -20,6 +20,8 @@
 // Defines
 constexpr float epsilon = 0.000001f;
 constexpr int max_num_rays = 10;
+constexpr float range_min = -0.9f;
+constexpr float range_max = 0.9f;
 
 using Indices = unsigned short;
 
@@ -72,6 +74,17 @@ struct Vector3
 	static float dot(const Vector3& a, const Vector3& b)
 	{
 		return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+	}
+	static float magnitude(const Vector3& a)
+	{
+		return sqrt((a.x * a.x) + (a.y * a.y) + (a.z * a.z));
+	}
+	static Vector3 normalize(const Vector3& a)
+	{
+		float mag = magnitude(a);
+
+		if (mag < epsilon) return Vector3(0.0f, 0.0f, 0.0f);
+		return Vector3(a.x / mag, a.y / mag, a.z / mag);
 	}
 
 	float x = 0.0f;
@@ -157,7 +170,7 @@ bool LoadMeshData(std::vector<Vertex>& _vertices, std::vector<Indices>& _indices
 }
 
 // Moller & Trumbore Ray-triangle intersection https://cadxfem.org/inf/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
-bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, float& t, float& u, float& v)
+bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, float& t, float& u, float& v, bool cull)
 {
 	// https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
 
@@ -172,9 +185,15 @@ bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, fl
 
 	// if the determinant is negative the triangle is backfacing
 	// if the determinant is close to 0, the ray misses the triangle
-	//if (det < EPSILON) return false; // Culls backface triangles
-
-	if (fabs(det) < epsilon) return false; // Allows Backface triangles
+	
+	if (cull)
+	{
+		if (det < epsilon) return false; // Culls backface triangles
+	}
+	else
+	{
+		if (fabs(det) < epsilon) return false; // Allows Backface triangles
+	}
 
 	float invDet = 1.0f / det;
 
@@ -231,7 +250,7 @@ Vector3 generate_random_direction(float min, float max)
 
 int main()
 {
-	std::string file_path = "Assets\\Unit_Cube.obj";
+	std::string file_path = "Assets\\Unit_sphere.obj";
 
 	pScene = importer.ReadFile(file_path, aiProcess_JoinIdenticalVertices | aiProcess_Triangulate);
 
@@ -297,24 +316,24 @@ int main()
 	for (int i = 0; i < max_num_rays; i++) // x axis rays
 	{
 		Ray ray;
-		ray.origin = {-2.0f, uniform_real_distribution(-0.5f, 0.5f), uniform_real_distribution(-0.5f, 0.5f) };
-		ray.direction = { 1.0f, 0.0f, 0.0f };
+		ray.origin = {-2.0f, uniform_real_distribution(range_min, range_max), uniform_real_distribution(range_min, range_max) };
+		ray.direction = Vector3::normalize(Vector3(1.0f, 0.0f, 0.0f));
 		ray.name = "x-axis";
 		rays.push_back(ray);
 	}
 	for (int i = 0; i < max_num_rays; i++) // y axis rays
 	{
 		Ray ray;
-		ray.origin = { uniform_real_distribution(-0.5f, 0.5f) , -2.0f,  uniform_real_distribution(-0.5f, 0.5f) };
-		ray.direction = { 0.0f, 1.0f, 0.0f };
+		ray.origin = { uniform_real_distribution(range_min, range_max) , -2.0f,  uniform_real_distribution(range_min, range_max) };
+		ray.direction = Vector3::normalize(Vector3(0.0f, 1.0f, 0.0f));;
 		ray.name = "y-axis";
 		rays.push_back(ray);
 	}
 	for (int i = 0; i < max_num_rays; i++) // z axis rays
 	{
 		Ray ray;
-		ray.origin = { uniform_real_distribution(-0.5f, 0.5f) , uniform_real_distribution(-0.5f, 0.5f),  -2.0f };
-		ray.direction = { 0.0f, 0.0f, 1.0f };
+		ray.origin = { uniform_real_distribution(range_min, range_max) , uniform_real_distribution(range_min, range_max),  -2.0f };
+		ray.direction = Vector3::normalize(Vector3(0.0f, 0.0f, 1.0f));
 		ray.name = "z-axis";
 		rays.push_back(ray);
 	}
@@ -340,7 +359,7 @@ int main()
 		// Loop through all rays and check if any hit the triangle.
 		for (int j = 0; j < rays.size(); j++)
 		{
-			if (intersect_triangle(rays.at(j), vert0, vert1, vert2, t, u, v))
+			if (intersect_triangle(rays.at(j), vert0, vert1, vert2, t, u, v, false))
 			{
 				rays.at(j).hit += 1;
 
@@ -354,6 +373,9 @@ int main()
 					std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
 				#endif // DEBUG
 			}
+
+			// Do another check and store the values of t to ray.
+			intersect_triangle(rays.at(j), vert0, vert1, vert2, rays.at(j).t, u, v, true);
 		}
 	}
 
