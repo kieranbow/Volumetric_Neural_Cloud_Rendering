@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------
-// This file will generate a set of points within a unit cube
+// This file will generate a set of points within a unit cube sized mesh
 
 // C++ includes
 #include <vector>
@@ -14,8 +14,10 @@
 #include <assimp\matrix4x4.h>
 #include <assimp\cimport.h>
 
-//#define DEBUG
+// Uncomment these for extra information during execution
+// #define DEBUG
 #define MESHDATA
+//#define VERTDATA
 
 // Defines
 constexpr float epsilon = 0.000001f;
@@ -25,7 +27,6 @@ constexpr float range_max = 0.9f;
 
 using Indices = unsigned short;
 
-// Basic Vector3 struct
 struct Vector3
 {
 	Vector3() {}
@@ -64,6 +65,7 @@ struct Vector3
 		return vector3;
 	}
 
+	// Produces a new vector C using vector A and B
 	static Vector3 cross(const Vector3& a, const Vector3& b)
 	{
 		float x = (a.y * b.z) - (a.z * b.y);
@@ -71,14 +73,20 @@ struct Vector3
 		float z = (a.x * b.y) - (a.y * b.x);
 		return Vector3(x, y, z);
 	}
+	
+	// Calculates the relationship between two vectors. I.e opposite vectors = -1
 	static float dot(const Vector3& a, const Vector3& b)
 	{
 		return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
 	}
+	
+	// Finds the magnitude from the vectors x,y,z coords
 	static float magnitude(const Vector3& a)
 	{
 		return sqrt((a.x * a.x) + (a.y * a.y) + (a.z * a.z));
 	}
+	
+	// Normalizes a vector using it magnitude
 	static Vector3 normalize(const Vector3& a)
 	{
 		float mag = magnitude(a);
@@ -100,6 +108,15 @@ struct Vertex
 	Vector3 position = { 0.0f, 0.0f, 0.0f };
 };
 
+struct Triangle
+{
+	Triangle() {}
+
+	Vertex vert0;
+	Vertex vert1;
+	Vertex vert2;
+};
+
 struct Ray
 {
 	Ray() {}
@@ -107,9 +124,18 @@ struct Ray
 
 	Vector3 origin = { 0.0f, 0.0f, 0.0f };
 	Vector3 direction = { 0.0f, 0.0f, 0.0f };
-	float t = 0.0f; // Ray origin to point
+	float t1 = 0.0f; // Ray origin to point
+	float t2 = 0.0f;
 	int hit = 0;
 	std::string name = "";
+};
+
+struct Point
+{
+	Point() {}
+	Point(float x, float y, float z) : position(x, y, z) {}
+	
+	Vector3 position = {0.0f, 0.0f, 0.0f};
 };
 
 Assimp::Importer importer;
@@ -119,8 +145,6 @@ const aiMesh* pMesh;
 std::vector<Vertex> vertices;
 std::vector<Indices> indices;
 
-
-// Add description here
 // https://www.mathsisfun.com/algebra/vectors-dot-product.html
 float dot_product(Vector3 a, Vector3 b)
 {
@@ -137,6 +161,7 @@ Vector3 cross_product(Vector3 a, Vector3 b)
 	return Vector3(x, y, z);
 }
 
+// Loads a mesh using Assimp library
 bool LoadMeshData(std::vector<Vertex>& _vertices, std::vector<Indices>& _indices)
 {
 	for (unsigned int m = 0; m < pScene->mNumMeshes; m++)
@@ -169,9 +194,10 @@ bool LoadMeshData(std::vector<Vertex>& _vertices, std::vector<Indices>& _indices
 	return true;
 }
 
-// Moller & Trumbore Ray-triangle intersection https://cadxfem.org/inf/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
+// Moller & Trumbore Ray-triangle intersection 
 bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, float& t, float& u, float& v, bool cull)
 {
+	// https://cadxfem.org/inf/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
 	// https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection
 
 	// Find the two edge vectors
@@ -185,7 +211,6 @@ bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, fl
 
 	// if the determinant is negative the triangle is backfacing
 	// if the determinant is close to 0, the ray misses the triangle
-	
 	if (cull)
 	{
 		if (det < epsilon) return false; // Culls backface triangles
@@ -236,6 +261,16 @@ Vector3 generate_random_position(float min, float max)
 	return position;
 }
 
+// Generate a random position between a min and max Vector3
+Vector3 generate_random_position(Vector3 min, Vector3 max)
+{
+	Vector3 position;
+	position.x = uniform_real_distribution(min.x, max.x);
+	position.y = uniform_real_distribution(min.y, max.y);
+	position.z = uniform_real_distribution(min.z, max.z);
+	return position;
+}
+
 // Generate a random direction between min and max
 Vector3 generate_random_direction(float min, float max)
 {
@@ -245,7 +280,6 @@ Vector3 generate_random_direction(float min, float max)
 	direction.z = uniform_real_distribution(min, max);
 	return direction;
 }
-
 
 
 int main()
@@ -269,45 +303,37 @@ int main()
 	}
 	else
 	{
-		#ifdef MESHDATA
+#ifdef MESHDATA
 			std::cout << "Mesh from (" + file_path + ") successfully loaded\n";
 			std::cout << "Mesh data:\n";
 			std::cout << "Vertex count: " + std::to_string(vertices.size()) + "\n";
 			std::cout << "Indices count: " + std::to_string(indices.size()) + "\n";
 			std::cout << "Triangle count: " + std::to_string(indices.size() / 3) + "\n\n"; // 3 indices make a triangle
-		#endif // MESHDATA
+#endif // MESHDATA
 
+#ifdef VERTDATA
+			// Loops through all triangles and prints out triangles vertices position
+			for (int i = 0; i < indices.size(); i += 3)
+			{
+				int vertex_idx_1 = indices.at(i);
+				int vertex_idx_2 = indices.at(i + 1);
+				int vertex_idx_3 = indices.at(i + 2);
 
-		//for (int i = 0; i < vertices.size(); i++)
-		//{
-		//	float x = vertices.at(i).position.x;
-		//	float y = vertices.at(i).position.y;
-		//	float z = vertices.at(i).position.z;
+				Vector3 vertex_1 = vertices.at(vertex_idx_1).position;
+				Vector3 vertex_2 = vertices.at(vertex_idx_2).position;
+				Vector3 vertex_3 = vertices.at(vertex_idx_3).position;
 
-		//	std::string position = std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z);
-		//	std::cout << "Vertex[" + std::to_string(i) + "] position: " + position + "\n";
-		//}
+				std::string vertex_1_pos = std::to_string(vertex_1.x) + ", \t" + std::to_string(vertex_1.y) + ", \t" + std::to_string(vertex_1.z);
+				std::string vertex_2_pos = std::to_string(vertex_2.x) + ", \t" + std::to_string(vertex_2.y) + ", \t" + std::to_string(vertex_2.z);
+				std::string vertex_3_pos = std::to_string(vertex_3.x) + ", \t" + std::to_string(vertex_3.y) + ", \t" + std::to_string(vertex_3.z);
 
-		//for (int i = 0; i < indices.size(); i += 3)
-		//{
-		//	int vertex_idx_1 = indices.at(i);
-		//	int vertex_idx_2 = indices.at(i + 1);
-		//	int vertex_idx_3 = indices.at(i + 2);
-
-		//	Vector3 vertex_1 = vertices.at(vertex_idx_1).position;
-		//	Vector3 vertex_2 = vertices.at(vertex_idx_2).position;
-		//	Vector3 vertex_3 = vertices.at(vertex_idx_3).position;
-
-		//	std::string vertex_1_pos = std::to_string(vertex_1.x) + ", \t" + std::to_string(vertex_1.y) + ", \t" + std::to_string(vertex_1.z);
-		//	std::string vertex_2_pos = std::to_string(vertex_2.x) + ", \t" + std::to_string(vertex_2.y) + ", \t" + std::to_string(vertex_2.z);
-		//	std::string vertex_3_pos = std::to_string(vertex_3.x) + ", \t" + std::to_string(vertex_3.y) + ", \t" + std::to_string(vertex_3.z);
-
-		//	int idx = (i / 3) + 1;
-		//	std::cout << "Triangle[" + std::to_string(idx) + "] position: \n";
-		//	std::cout << "Vertex 1: " + vertex_1_pos + "\n";
-		//	std::cout << "Vertex 2: " + vertex_2_pos + "\n";
-		//	std::cout << "Vertex 3: " + vertex_3_pos + "\n\n";
-		//}
+				int idx = (i / 3) + 1;
+				std::cout << "Triangle[" + std::to_string(idx) + "] position: \n";
+				std::cout << "Vertex 1: " + vertex_1_pos + "\n";
+				std::cout << "Vertex 2: " + vertex_2_pos + "\n";
+				std::cout << "Vertex 3: " + vertex_3_pos + "\n\n";
+			}
+#endif // VERTDATA
 	}
 
 	std::vector<Ray> rays;
@@ -363,19 +389,19 @@ int main()
 			{
 				rays.at(j).hit += 1;
 
-				#ifdef DEBUG
+#ifdef DEBUG
 					std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] hit Triangle" + "\t [" + std::to_string(idx) + "]\n";
-				#endif // DEBUG
+#endif // DEBUG
 			}
 			else
 			{
-				#ifdef DEBUG
+#ifdef DEBUG
 					std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
-				#endif // DEBUG
+#endif // DEBUG
 			}
 
 			// Do another check and store the values of t to ray.
-			intersect_triangle(rays.at(j), vert0, vert1, vert2, rays.at(j).t, u, v, true);
+			intersect_triangle(rays.at(j), vert0, vert1, vert2, rays.at(j).t1, u, v, true);
 		}
 	}
 
@@ -388,22 +414,42 @@ int main()
 	{
 		if (ray.hit % 2 == 0) // is even
 		{
-			#ifdef DEBUG
+#ifdef DEBUG
 				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
-			#endif // _DEBUG
+#endif // _DEBUG
 
 			hit++;
 		}
 		else // is odd
 		{
-			#ifdef DEBUG
+#ifdef DEBUG
 				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
-			#endif // DEBUG
+#endif // DEBUG
 		}
 		if (hit == rays.size())
 		{
 			std::cout << "Mesh is water tight\n";
 		}
 	}
+
+	// https://computergraphics.stackexchange.com/questions/10156/how-to-sample-3d-points-outside-and-inside-the-mesh-surface/10163
+
+	std::vector<Point> points;
+
+	// Using rays t value. Generate a set of points within the mesh
+	for (int i = 0; i < 10; i++)
+	{
+		Point point;
+		point.position = generate_random_position(range_min, range_max);
+		points.push_back(point);
+	}
+	for (auto& point : points)
+	{
+		std::string x = std::to_string(point.position.x);
+		std::string y = std::to_string(point.position.y);
+		std::string z = std::to_string(point.position.z);
+		std::cout << x + ", " + y + ", " + z + "\n";
+	}
+
 	return 1;
 }
