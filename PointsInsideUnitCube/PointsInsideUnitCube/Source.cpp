@@ -24,6 +24,7 @@ constexpr float epsilon = 0.000001f;
 constexpr int max_num_rays = 10;
 constexpr float range_min = -0.9f;
 constexpr float range_max = 0.9f;
+constexpr int max_num_point = 100;
 
 using Indices = unsigned short;
 
@@ -125,7 +126,6 @@ struct Ray
 	Vector3 origin = { 0.0f, 0.0f, 0.0f };
 	Vector3 direction = { 0.0f, 0.0f, 0.0f };
 	float t1 = 0.0f; // Ray origin to point
-	float t2 = 0.0f;
 	int hit = 0;
 	std::string name = "";
 };
@@ -410,45 +410,72 @@ int main()
 	// Loop through all rays and check if the number of hits made is equal to 2
 	// If the rays hit an even number of triangles. Mesh is water tight
 	// If the rays hit an odd number of triangles. Mesh is not water tight
-	for (auto& ray : rays)
-	{
-		if (ray.hit % 2 == 0) // is even
-		{
-#ifdef DEBUG
-				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
-#endif // _DEBUG
-
-			hit++;
-		}
-		else // is odd
-		{
-#ifdef DEBUG
-				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
-#endif // DEBUG
-		}
-		if (hit == rays.size())
-		{
-			std::cout << "Mesh is water tight\n";
-		}
-	}
+//	for (auto& ray : rays)
+//	{
+//		if (ray.hit % 2 == 0) // is even
+//		{
+//#ifdef DEBUG
+//				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
+//#endif // _DEBUG
+//
+//			hit++;
+//		}
+//		else // is odd
+//		{
+//#ifdef DEBUG
+//				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
+//#endif // DEBUG
+//		}
+//		if (hit == rays.size())
+//		{
+//			std::cout << "Mesh is water tight\n";
+//		}
+//	}
 
 	// https://computergraphics.stackexchange.com/questions/10156/how-to-sample-3d-points-outside-and-inside-the-mesh-surface/10163
 
 	std::vector<Point> points;
 
-	// Using rays t value. Generate a set of points within the mesh
-	for (int i = 0; i < 10; i++)
+	// Loop through the maximun number of points that will be generated
+	for (int i = 0; i < max_num_point; i++)
 	{
-		Point point;
-		point.position = generate_random_position(range_min, range_max);
-		points.push_back(point);
-	}
-	for (auto& point : points)
-	{
-		std::string x = std::to_string(point.position.x);
-		std::string y = std::to_string(point.position.y);
-		std::string z = std::to_string(point.position.z);
-		std::cout << x + ", " + y + ", " + z + "\n";
+		// Generate a ray inside the unit cube with a random point and direction
+		Ray ray;
+		ray.origin = generate_random_position(Vector3(range_min, range_min, range_min), Vector3(range_max, range_max, range_max));
+		ray.direction = Vector3::normalize(generate_random_direction(range_min, range_max));
+
+		// Loop through all triangles within the mesh and check if generate ray hits any triangles
+		for (int i = 0; i < indices.size(); i += 3)
+		{
+			float u = 0;
+			float v = 0;
+			float t = 0;
+
+			int vertex_idx_1 = indices.at(i);
+			int vertex_idx_2 = indices.at(i + 1);
+			int vertex_idx_3 = indices.at(i + 2);
+
+			// Get the three vertices of a triangle
+			Triangle triangle;
+			triangle.vert0.position = vertices.at(vertex_idx_1).position;
+			triangle.vert1.position = vertices.at(vertex_idx_2).position;
+			triangle.vert2.position = vertices.at(vertex_idx_3).position;
+
+			// When a ray does hit a triangle, increment its hit property
+			if (intersect_triangle(ray, triangle.vert0.position, triangle.vert1.position, triangle.vert2.position, t, u, v, false))
+			{
+				ray.hit++;
+			}
+		}
+
+		// If the number of hits the ray makes is even, then the mesh is water tight.
+		// The origin of the ray is then given to a point which is then stored.
+		if (ray.hit % 2 == 0 && ray.hit >= 2)
+		{
+			Point point;
+			point.position = ray.origin;
+			points.push_back(point);
+		}
 	}
 
 	return 1;
