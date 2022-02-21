@@ -6,6 +6,9 @@
 #include <iostream>
 #include <random>
 #include <functional>
+#include <fstream>
+
+#include <time.h>
 
 // Assimp
 #include <assimp\Importer.hpp>
@@ -207,7 +210,7 @@ bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, fl
 	// Begin calculating determinant - also used to calculate U parameter
 	Vector3 pvec = Vector3::cross(ray.direction, v0v2);
 
-	float det = Vector3::dot(pvec, v0v1); //dot_product(pvec, v0v1)
+	float det = Vector3::dot(pvec, v0v1);
 
 	// if the determinant is negative the triangle is backfacing
 	// if the determinant is close to 0, the ray misses the triangle
@@ -217,7 +220,7 @@ bool intersect_triangle(Ray ray, Vector3 vert0, Vector3 vert1, Vector3 vert2, fl
 	}
 	else
 	{
-		if (fabs(det) < epsilon) return false; // Allows Backface triangles
+		if (det > -epsilon && det < epsilon) return false; // Allows Backface triangles
 	}
 
 	float invDet = 1.0f / det;
@@ -336,115 +339,27 @@ int main()
 #endif // VERTDATA
 	}
 
-	std::vector<Ray> rays;
-
-	// Generate a set of rays at each axis with different origins
-	for (int i = 0; i < max_num_rays; i++) // x axis rays
-	{
-		Ray ray;
-		ray.origin = {-2.0f, uniform_real_distribution(range_min, range_max), uniform_real_distribution(range_min, range_max) };
-		ray.direction = Vector3::normalize(Vector3(1.0f, 0.0f, 0.0f));
-		ray.name = "x-axis";
-		rays.push_back(ray);
-	}
-	for (int i = 0; i < max_num_rays; i++) // y axis rays
-	{
-		Ray ray;
-		ray.origin = { uniform_real_distribution(range_min, range_max) , -2.0f,  uniform_real_distribution(range_min, range_max) };
-		ray.direction = Vector3::normalize(Vector3(0.0f, 1.0f, 0.0f));;
-		ray.name = "y-axis";
-		rays.push_back(ray);
-	}
-	for (int i = 0; i < max_num_rays; i++) // z axis rays
-	{
-		Ray ray;
-		ray.origin = { uniform_real_distribution(range_min, range_max) , uniform_real_distribution(range_min, range_max),  -2.0f };
-		ray.direction = Vector3::normalize(Vector3(0.0f, 0.0f, 1.0f));
-		ray.name = "z-axis";
-		rays.push_back(ray);
-	}
-
-	// Loop through all triangles within the mesh and test if the rays has hit it
-	for (int i = 0; i < indices.size(); i += 3)
-	{
-		int vertex_idx_1 = indices.at(i);
-		int vertex_idx_2 = indices.at(i + 1);
-		int vertex_idx_3 = indices.at(i + 2);
-
-		// Get the three vertices of a triangle
-		Vector3 vert0 = vertices.at(vertex_idx_1).position;
-		Vector3 vert1 = vertices.at(vertex_idx_2).position;
-		Vector3 vert2 = vertices.at(vertex_idx_3).position;
-
-		float t = 0.0f;
-		float u = 0.0f;
-		float v = 0.0f;
-		
-		int idx = (i / 3);
-
-		// Loop through all rays and check if any hit the triangle.
-		for (int j = 0; j < rays.size(); j++)
-		{
-			if (intersect_triangle(rays.at(j), vert0, vert1, vert2, t, u, v, false))
-			{
-				rays.at(j).hit += 1;
-
-#ifdef DEBUG
-					std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] hit Triangle" + "\t [" + std::to_string(idx) + "]\n";
-#endif // DEBUG
-			}
-			else
-			{
-#ifdef DEBUG
-					std::cout << rays.at(j).name + " Ray[" + std::to_string(j) + "] missed Triangle" +  "\t [" + std::to_string(idx) + "]\n";
-#endif // DEBUG
-			}
-
-			// Do another check and store the values of t to ray.
-			intersect_triangle(rays.at(j), vert0, vert1, vert2, rays.at(j).t1, u, v, true);
-		}
-	}
-
-	int hit = 0;
-
-	// Loop through all rays and check if the number of hits made is equal to 2
-	// If the rays hit an even number of triangles. Mesh is water tight
-	// If the rays hit an odd number of triangles. Mesh is not water tight
-//	for (auto& ray : rays)
-//	{
-//		if (ray.hit % 2 == 0) // is even
-//		{
-//#ifdef DEBUG
-//				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
-//#endif // _DEBUG
-//
-//			hit++;
-//		}
-//		else // is odd
-//		{
-//#ifdef DEBUG
-//				std::cout << ray.name + " hit: " + std::to_string(ray.hit) + "\n";
-//#endif // DEBUG
-//		}
-//		if (hit == rays.size())
-//		{
-//			std::cout << "Mesh is water tight\n";
-//		}
-//	}
-
-	// https://computergraphics.stackexchange.com/questions/10156/how-to-sample-3d-points-outside-and-inside-the-mesh-surface/10163
+	// https://jcgt.org/published/0002/01/05/
 
 	std::vector<Point> points;
+	std::vector<Point> rand_points;
 
-	// Loop through the maximun number of points that will be generated
+	// Generate a set of points within a unit cube 
 	for (int i = 0; i < max_num_point; i++)
 	{
-		// Generate a ray inside the unit cube with a random point and direction
-		Ray ray;
-		ray.origin = generate_random_position(Vector3(range_min, range_min, range_min), Vector3(range_max, range_max, range_max));
-		ray.direction = Vector3::normalize(generate_random_direction(range_min, range_max));
+		Point point;
+		point.position = generate_random_position(range_min, range_max);
+		rand_points.push_back(point);
+	}
 
-		// Loop through all triangles within the mesh and check if generate ray hits any triangles
+	// Loop through each point, generate a ray and check if the point is within the mesh
+	for (auto& point : rand_points)
+	{
+		Ray ray;
+		ray.origin = point.position;
+		ray.direction = Vector3(1.0f, 0.0f, 0.0f);
+
+		// Loop through mesh triangles and check if ray collided
 		for (int i = 0; i < indices.size(); i += 3)
 		{
 			float u = 0;
@@ -456,26 +371,88 @@ int main()
 			int vertex_idx_3 = indices.at(i + 2);
 
 			// Get the three vertices of a triangle
-			Triangle triangle;
-			triangle.vert0.position = vertices.at(vertex_idx_1).position;
-			triangle.vert1.position = vertices.at(vertex_idx_2).position;
-			triangle.vert2.position = vertices.at(vertex_idx_3).position;
+			Vector3 vert0 = vertices.at(vertex_idx_1).position;
+			Vector3 vert1 = vertices.at(vertex_idx_2).position;
+			Vector3 vert2 = vertices.at(vertex_idx_3).position;
 
 			// When a ray does hit a triangle, increment its hit property
-			if (intersect_triangle(ray, triangle.vert0.position, triangle.vert1.position, triangle.vert2.position, t, u, v, false))
+			if (intersect_triangle(ray, vert0, vert1, vert2, t, u, v, false))
 			{
 				ray.hit++;
 			}
 		}
-
-		// If the number of hits the ray makes is even, then the mesh is water tight.
-		// The origin of the ray is then given to a point which is then stored.
-		if (ray.hit % 2 == 0 && ray.hit >= 2)
+		if (ray.hit & 1) // Bitwise operator
 		{
-			Point point;
-			point.position = ray.origin;
-			points.push_back(point);
+			std::cout << "test";
 		}
+	}
+
+	// Loop through the maximun number of points that will be generated
+	//for (int i = 0; i < max_num_point; i++)
+	//{
+	//	// Generate a ray inside the unit cube with a random point and direction
+	//	Ray ray;
+	//	ray.origin = generate_random_position(range_min, range_max);
+
+	//	srand(time(NULL));
+	//	int x = rand() % 2;
+	//	int y = rand() % 2;
+	//	int z = rand() % 2;
+	//	
+	//	ray.direction = { 1.0f, 0.0f, 0.0f };
+
+	//	// Loop through all triangles within the mesh and check if the generated ray hits any triangles
+	//	for (int i = 0; i < indices.size(); i += 3)
+	//	{
+	//		float u = 0;
+	//		float v = 0;
+	//		float t = 0;
+
+	//		int vertex_idx_1 = indices.at(i);
+	//		int vertex_idx_2 = indices.at(i + 1);
+	//		int vertex_idx_3 = indices.at(i + 2);
+
+	//		// Get the three vertices of a triangle
+	//		Vector3 vert0 = vertices.at(vertex_idx_1).position;
+	//		Vector3 vert1 = vertices.at(vertex_idx_2).position;
+	//		Vector3 vert2 = vertices.at(vertex_idx_3).position;
+
+	//		// When a ray does hit a triangle, increment its hit property
+	//		if (intersect_triangle(ray, vert0, vert1, vert2, t, u, v, false))
+	//		{
+	//			ray.hit++;
+	//		}
+	//	}
+
+	//	// If the number of hits the ray makes is odd, then the point is inside the mesh
+	//	// The origin of the ray is then given to a point which is then stored.
+	//	if (ray.hit % 2 == 0 && ray.hit >= 2) /*ray.hit % 2 == 0 && ray.hit >= 2*/
+	//	{
+	//		Point point;
+	//		point.position = ray.origin;
+	//		points.push_back(point);
+	//	}
+	//}
+
+	// Create txt file called Points
+	std::ofstream file ( "Points.txt" );
+
+	// Only write data to file if file can be opened
+	if (file.is_open())
+	{
+		for (auto& point : points)
+		{
+			std::string x = std::to_string(point.position.x);
+			std::string y = std::to_string(point.position.y);
+			std::string z = std::to_string(point.position.z);
+			
+			file << x + ", " + y + ", " + z << std::endl;
+		}
+		file.close();
+	}
+	else
+	{
+		std::cout << "Cannot open file\n";
 	}
 
 	return 1;
