@@ -8,22 +8,33 @@ import torch.nn.functional as F
 input_size = 2352
 
 class mlp(nn.Module):
-    # init the mlp with 3 hidden layers and output
+    # init the mlp with 8 hidden layers and output
     def __init__(self):
         super().__init__()
         
         # Number of hidden nodes in each layer
-        hidden_layer_1 = 1024
-        hidden_layer_2 = 512
+        # Same number of hidden layers as NeRF
+        hidden_layer_1 = 256
+        hidden_layer_2 = 256
         hidden_layer_3 = 256
-        
+        hidden_layer_4 = 256
+        hidden_layer_5 = 256
+        hidden_layer_6 = 256
+        hidden_layer_7 = 256
+        hidden_layer_8 = 256
+
         # number of outputs
         numberOfClasses = 3
         
         self.fc1 = nn.Linear(input_size, hidden_layer_1)
         self.fc2 = nn.Linear(hidden_layer_1, hidden_layer_2)
         self.fc3 = nn.Linear(hidden_layer_2, hidden_layer_3)
-        self.fc4 = nn.Linear(hidden_layer_3, numberOfClasses)
+        self.fc3 = nn.Linear(hidden_layer_3, hidden_layer_4)
+        self.fc3 = nn.Linear(hidden_layer_4, hidden_layer_5)
+        self.fc3 = nn.Linear(hidden_layer_5, hidden_layer_6)
+        self.fc3 = nn.Linear(hidden_layer_6, hidden_layer_7)
+        self.fc3 = nn.Linear(hidden_layer_7, hidden_layer_8)
+        self.fc4 = nn.Linear(hidden_layer_8, numberOfClasses)
         
         self.dropout = nn.Dropout(p = 0.2)
         
@@ -42,3 +53,24 @@ class mlp(nn.Module):
 #%% Init mlp model
 model = mlp()
 print(model)
+
+#%% Load data for training
+batch_size = 4
+
+
+
+
+#%% Train model
+num_epochs = 100
+valid_loss_min = np.Inf
+training_loss = []
+valiation_loss = []
+
+for epoch in range(num_epochs):
+    training_loss = 0.0
+    validation_loss = 0.0
+    
+    model.train()
+    
+    
+    
