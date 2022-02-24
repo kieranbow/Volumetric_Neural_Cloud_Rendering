@@ -341,7 +341,7 @@ int main()
 
 	// https://jcgt.org/published/0002/01/05/
 
-	std::vector<Point> points;
+	std::vector<Point> saved_points;
 	std::vector<Point> rand_points;
 
 	// Generate a set of points within a unit cube 
@@ -357,7 +357,7 @@ int main()
 	{
 		Ray ray;
 		ray.origin = point.position;
-		ray.direction = Vector3(1.0f, 0.0f, 0.0f) - point.position;
+		ray.direction = Vector3(1.0f, 0.0f, 0.0f);
 
 		// Loop through mesh triangles and check if ray collided
 		for (int i = 0; i < indices.size(); i += 3)
@@ -375,78 +375,39 @@ int main()
 			Vector3 vert1 = vertices.at(vertex_idx_2).position;
 			Vector3 vert2 = vertices.at(vertex_idx_3).position;
 
-			// When a ray does hit a triangle, increment its hit property
-			if (intersect_triangle(ray, vert0, vert1, vert2, t, u, v, false))
+			// Test if ray hits triangle
+			intersect_triangle(ray, vert0, vert1, vert2, t, u, v, false);
+
+			// If the t value of the ray is positive, increment the rays hit value
+			if (t > 0.0f)
 			{
 				ray.hit++;
 			}
 		}
+		
+		// If the rays hit value is == to 1, then its inside a mesh
+		// If the rays hit value is != to 1, then its outside the mesh
 		if (ray.hit & 1) // Bitwise operator
 		{
-			std::cout << "test";
+			Point temp;
+			temp.position = point.position;
+			saved_points.push_back(temp);
 		}
 	}
 
-	// Loop through the maximun number of points that will be generated
-	//for (int i = 0; i < max_num_point; i++)
-	//{
-	//	// Generate a ray inside the unit cube with a random point and direction
-	//	Ray ray;
-	//	ray.origin = generate_random_position(range_min, range_max);
-
-	//	srand(time(NULL));
-	//	int x = rand() % 2;
-	//	int y = rand() % 2;
-	//	int z = rand() % 2;
-	//	
-	//	ray.direction = { 1.0f, 0.0f, 0.0f };
-
-	//	// Loop through all triangles within the mesh and check if the generated ray hits any triangles
-	//	for (int i = 0; i < indices.size(); i += 3)
-	//	{
-	//		float u = 0;
-	//		float v = 0;
-	//		float t = 0;
-
-	//		int vertex_idx_1 = indices.at(i);
-	//		int vertex_idx_2 = indices.at(i + 1);
-	//		int vertex_idx_3 = indices.at(i + 2);
-
-	//		// Get the three vertices of a triangle
-	//		Vector3 vert0 = vertices.at(vertex_idx_1).position;
-	//		Vector3 vert1 = vertices.at(vertex_idx_2).position;
-	//		Vector3 vert2 = vertices.at(vertex_idx_3).position;
-
-	//		// When a ray does hit a triangle, increment its hit property
-	//		if (intersect_triangle(ray, vert0, vert1, vert2, t, u, v, false))
-	//		{
-	//			ray.hit++;
-	//		}
-	//	}
-
-	//	// If the number of hits the ray makes is odd, then the point is inside the mesh
-	//	// The origin of the ray is then given to a point which is then stored.
-	//	if (ray.hit % 2 == 0 && ray.hit >= 2) /*ray.hit % 2 == 0 && ray.hit >= 2*/
-	//	{
-	//		Point point;
-	//		point.position = ray.origin;
-	//		points.push_back(point);
-	//	}
-	//}
-
 	// Create txt file called Points
-	std::ofstream file ( "Points.txt" );
+	std::ofstream file ( "Points.json" );
 
-	// Only write data to file if file can be opened
+	// Writes all the saved points into a json file
 	if (file.is_open())
 	{
-		for (auto& point : points)
+		for (auto& point : saved_points)
 		{
 			std::string x = std::to_string(point.position.x);
 			std::string y = std::to_string(point.position.y);
 			std::string z = std::to_string(point.position.z);
 			
-			file << x + ", " + y + ", " + z << std::endl;
+			file << "{'position': " << x + ", " + y + ", " + z << " }" << std::endl;
 		}
 		file.close();
 	}

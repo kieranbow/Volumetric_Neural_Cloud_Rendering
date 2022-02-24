@@ -57,6 +57,10 @@ print(model)
 #%% Load data for training
 batch_size = 4
 
+# https://pytorch.org/tutorials/beginner/text_sentiment_ngrams_tutorial.html
+# https://towardsdatascience.com/how-to-use-datasets-and-dataloader-in-pytorch-for-custom-text-data-270eed7f7c00
+# https://colab.research.google.com/github/bentrevett/pytorch-sentiment-analysis/blob/master/A%20-%20Using%20TorchText%20with%20Your%20Own%20Datasets.ipynb
+# use .json intead of .txt
 
 
 
