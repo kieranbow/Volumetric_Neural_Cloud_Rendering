@@ -24,10 +24,9 @@
 
 // Defines
 constexpr float epsilon = 0.000001f;
-constexpr int max_num_rays = 10;
 constexpr float range_min = -0.9f;
 constexpr float range_max = 0.9f;
-constexpr int max_num_point = 100;
+constexpr int max_num_point = 1000;
 
 using Indices = unsigned short;
 
@@ -339,12 +338,10 @@ int main()
 #endif // VERTDATA
 	}
 
-	// https://jcgt.org/published/0002/01/05/
-
 	std::vector<Point> saved_points;
 	std::vector<Point> rand_points;
 
-	// Generate a set of points within a unit cube 
+	// Generate a set of points within a unit cube space
 	for (int i = 0; i < max_num_point; i++)
 	{
 		Point point;
@@ -385,8 +382,8 @@ int main()
 			}
 		}
 		
-		// If the rays hit value is == to 1, then its inside a mesh
-		// If the rays hit value is != to 1, then its outside the mesh
+		// If the rays hit value is odd, then its inside a mesh
+		// If the rays hit value is even, then its outside the mesh
 		if (ray.hit & 1) // Bitwise operator
 		{
 			Point temp;
@@ -395,19 +392,21 @@ int main()
 		}
 	}
 
-	// Create txt file called Points
+	// Create a json file called Points
 	std::ofstream file ( "Points.json" );
 
-	// Writes all the saved points into a json file
 	if (file.is_open())
 	{
+		// Loop through all the points and write into the file
 		for (auto& point : saved_points)
 		{
 			std::string x = std::to_string(point.position.x);
 			std::string y = std::to_string(point.position.y);
 			std::string z = std::to_string(point.position.z);
-			
-			file << "{'position': " << x + ", " + y + ", " + z << " }" << std::endl;
+
+			// Using escape character https://gillius.org/ctut/app_a.htm
+			// To write " " into file.
+			file << "{\"position\": " << x + ", " + y + ", " + z << " }" << std::endl;
 		}
 		file.close();
 	}
