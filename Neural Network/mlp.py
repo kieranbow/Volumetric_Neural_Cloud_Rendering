@@ -3,6 +3,8 @@ import numpy as np
 import torch
 from torch import nn, optim
 import torch.nn.functional as F
+import json
+from torch.utils.data import DataLoader, IterableDataset
 
 #%% Multi-Layered Perceptron
 input_size = 2352
@@ -55,13 +57,33 @@ model = mlp()
 print(model)
 
 #%% Load data for training
-batch_size = 4
-
 # https://pytorch.org/tutorials/beginner/text_sentiment_ngrams_tutorial.html
 # https://towardsdatascience.com/how-to-use-datasets-and-dataloader-in-pytorch-for-custom-text-data-270eed7f7c00
 # https://colab.research.google.com/github/bentrevett/pytorch-sentiment-analysis/blob/master/A%20-%20Using%20TorchText%20with%20Your%20Own%20Datasets.ipynb
-# use .json intead of .txt
+# https://stackoverflow.com/questions/55109684/how-to-handle-large-json-file-in-pytorch
+batch_size = 4
 
+class JsonDataset(IterableDataset):
+    def __init__(self, file):
+        self.file = file
+        
+    def __iter__(self):
+        for json_file in self.file:
+            with open(json_file) as f:
+                for sample_line in f:
+                    sample = json.loads(sample_line)
+                    yield sample['Position'], sample ['x']
+
+
+#%%
+#dataset = JsonDataset(['Points.json'])
+
+file = open('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Points.json', "r")
+parsed = json.loads(file)
+pretty_json = json.dump(parsed, indent = 4)
+file.close()
+
+print(pretty_json)
 
 
 #%% Train model

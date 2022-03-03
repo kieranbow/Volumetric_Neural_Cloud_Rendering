@@ -406,7 +406,8 @@ int main()
 
 			// Using escape character https://gillius.org/ctut/app_a.htm
 			// To write " " into file.
-			file << "{\"position\": " << x + ", " + y + ", " + z << " }" << std::endl;
+			//file << "{\"position\": { " << "\"x\": " << x + ", \"y\": " + y + ", \"z\": " + z << " }}" << std::endl;
+			file << "{ " << "\"x\": " << x + ", \"y\": " + y + ", \"z\": " + z << " }" << std::endl;
 		}
 		file.close();
 	}
