@@ -6,6 +6,9 @@ import torch.nn.functional as F
 import json
 from torch.utils.data import DataLoader, IterableDataset
 
+from torchtext.legacy import data
+from torchtext.legacy import datasets
+
 #%% Multi-Layered Perceptron
 input_size = 2352
 
@@ -61,42 +64,118 @@ print(model)
 # https://towardsdatascience.com/how-to-use-datasets-and-dataloader-in-pytorch-for-custom-text-data-270eed7f7c00
 # https://colab.research.google.com/github/bentrevett/pytorch-sentiment-analysis/blob/master/A%20-%20Using%20TorchText%20with%20Your%20Own%20Datasets.ipynb
 # https://stackoverflow.com/questions/55109684/how-to-handle-large-json-file-in-pytorch
-batch_size = 4
+# https://www.youtube.com/watch?v=KRgq4VnCr7I
+batch_size = 32
 
 class JsonDataset(IterableDataset):
     def __init__(self, file):
         self.file = file
         
     def __iter__(self):
-        for json_file in self.file:
-            with open(json_file) as f:
+        #for json_file in self.file:
+            with open(self.file) as f:
                 for sample_line in f:
                     sample = json.loads(sample_line)
-                    yield sample['Position'], sample ['x']
+                    yield sample['x'], sample ['y'], sample ['z']
 
 
 #%%
-#dataset = JsonDataset(['Points.json'])
+#define field objects
+X = data.Field()
+Y = data.Field()
+Z = data.Field()
 
-file = open('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Points.json', "r")
-parsed = json.loads(file)
-pretty_json = json.dump(parsed, indent = 4)
-file.close()
+# Define the dictionary which represents the dataset
+fields = {'x': ('x', X), 'y': ('y', Y), 'z': ('z', Z)}
 
-print(pretty_json)
+train_dataset, valid_dataset, test_dataset = data.TabularDataset.splits(
+    path        = 'D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Data',
+    train       = 'Training.json',
+    validation  = 'Valid.json',
+    test        = 'Testing.json',
+    format      = 'json',
+    fields      = fields)
 
+# Print 5 elements from training dataset
+print("printing 5 elements from training dataset")
+for i in range(5):
+    print(vars(train_dataset[i]))
+
+# Print 5 elements from validation dataset
+print("printing 5 elements from validation dataset")
+for i in range(5):
+    print(vars(valid_dataset[i]))
+    
+# Print 5 elements from testing dataset
+print("printing 5 elements from testing dataset")
+for i in range(5):
+    print(vars(test_dataset[i]))
+
+#%%
+
+#list = []
+#with open('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Points.json') as f:
+    #for obj in f:
+       # line = json.loads(obj)
+        #list.append(line)
+        
+#for line in list:
+   # print(line["x"], line["y"], line["z"])
+
+dataset = JsonDataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Points.json')
+dataLoader = DataLoader(dataset, batch_size)
+
+#%% Shows the first five entires in the dataset
+print("Showing the first five entires in the dataset")
+dataIter = iter(dataset)
+print(next(dataIter))
+print(next(dataIter))
+print(next(dataIter))
+print(next(dataIter))
+print(next(dataIter))
 
 #%% Train model
+
+criterion = nn.NLLLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.003)
+
 num_epochs = 100
 valid_loss_min = np.Inf
 training_loss = []
 valiation_loss = []
 
 for epoch in range(num_epochs):
-    training_loss = 0.0
-    validation_loss = 0.0
+    train_loss = 0.0
+    valid_loss = 0.0
     
-    model.train()
+    #for batch in dataLoader:
+        #y = model(batch)
     
     
+    #model.train()
+    
+    #for train_data, target in dataLoader:
+       # optimizer.zero_grad()
+       # output = model(train_data)
+        #loss = criterion(output, target)
+       # loss.backward()
+       # optimizer.step()
+       # train_loss += loss.item() * train_data.size(0)
+        
+   # for valid_data, target in dataLoader:
+       # output = model(valid_data)
+       # loss = criterion(output, target)
+       # valid_loss += loss.item() * valid_data.size(0)
+    
+    #train_loss = train_loss / len(dataLoader.sampler)
+    #valid_loss = valid_loss / len(dataLoader.sampler)
+    
+   # training_loss.append(train_loss)
+   # valiation_loss.append(valid_loss)
+    
+   # print('Epoch: {} \tTraining Loss: {:.2f} \tValidation Loss: {:.2f}'.format(
+   # epoch + 1, 
+   # train_loss,
+   # valid_loss
+   # ))
     
