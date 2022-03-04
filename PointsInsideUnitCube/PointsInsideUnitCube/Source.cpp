@@ -7,7 +7,7 @@
 #include <random>
 #include <functional>
 #include <fstream>
-
+#include <array>
 #include <time.h>
 
 // Assimp
@@ -283,6 +283,33 @@ Vector3 generate_random_direction(float min, float max)
 	return direction;
 }
 
+bool printToJson(std::ofstream& file, std::vector<Point>& points)
+{
+	// Make sure the file is open before writing into it
+	if (file.is_open())
+	{
+		// Loop through all the points and write into the file
+		for (auto& point : points)
+		{
+			std::string x = std::to_string(point.position.x);
+			std::string y = std::to_string(point.position.y);
+			std::string z = std::to_string(point.position.z);
+
+			// Using escape character https://gillius.org/ctut/app_a.htm
+			// To write " " into the file.
+			file << "{ " << "\"x\": " << x + ", \"y\": " + y + ", \"z\": " + z << " }" << std::endl;
+		}
+		file.close();
+		file.flush();
+		return true;
+	}
+	else
+	{
+		std::cout << "Cannot open file\n";
+		return false;
+	}
+	return true;
+}
 
 int main()
 {
@@ -338,83 +365,175 @@ int main()
 #endif // VERTDATA
 	}
 
-	std::vector<Point> saved_points;
-	std::vector<Point> rand_points;
+	// Create the 3 files which will be used for training, validing and testing the AI
+	// These files will have x,y,z positions stored in them
+	std::vector<std::ofstream> files;
+	files.push_back(std::ofstream("Training.json"));
+	files.push_back(std::ofstream("Validation.json"));
+	files.push_back(std::ofstream("Testing.json"));
 
-	// Generate a set of points within a unit cube space
-	for (int i = 0; i < max_num_point; i++)
+	// Loop through the 3 files
+	// Generate a set of points
+	// Write the points inside the files
+	for (auto& file : files)
 	{
-		Point point;
-		point.position = generate_random_position(range_min, range_max);
-		rand_points.push_back(point);
-	}
+		std::vector<Point> rand_points;
+		std::vector<Point> saved_points;
 
-	// Loop through each point, generate a ray and check if the point is within the mesh
-	for (auto& point : rand_points)
-	{
-		Ray ray;
-		ray.origin = point.position;
-		ray.direction = Vector3(1.0f, 0.0f, 0.0f);
-
-		// Loop through mesh triangles and check if ray collided
-		for (int i = 0; i < indices.size(); i += 3)
+		// First, generate a set of points within a unit cube space. 
+		// I.e a range from [-1, 1]
+		for (int i = 0; i < max_num_point; i++)
 		{
-			float u = 0;
-			float v = 0;
-			float t = 0;
+			Point point;
+			point.position = generate_random_position(range_min, range_max);
+			rand_points.push_back(point);
+		}
 
-			int vertex_idx_1 = indices.at(i);
-			int vertex_idx_2 = indices.at(i + 1);
-			int vertex_idx_3 = indices.at(i + 2);
+		// Next, loop through each point generating a ray and check if the point is within the mesh
+		// If the point is inside the mesh, save it into a json file
+		// If the point is not inside the mesh, ignore it.
+		for (auto& point : rand_points)
+		{
+			Ray ray;
+			ray.origin = point.position;
+			ray.direction = Vector3(1.0f, 0.0f, 0.0f); // Direction can be randomized but for simplicity, it set on the x+ axis
 
-			// Get the three vertices of a triangle
-			Vector3 vert0 = vertices.at(vertex_idx_1).position;
-			Vector3 vert1 = vertices.at(vertex_idx_2).position;
-			Vector3 vert2 = vertices.at(vertex_idx_3).position;
-
-			// Test if ray hits triangle
-			intersect_triangle(ray, vert0, vert1, vert2, t, u, v, false);
-
-			// If the t value of the ray is positive, increment the rays hit value
-			if (t > 0.0f)
+			// Loop through the mesh's triangles and check if ray collided
+			// using Moller Trumbore Ray Triangle Intersection
+			for (int i = 0; i < indices.size(); i += 3)
 			{
-				ray.hit++;
+				float u = 0;
+				float v = 0;
+				float t = 0;
+
+				int vertex_idx_1 = indices.at(i);
+				int vertex_idx_2 = indices.at(i + 1);
+				int vertex_idx_3 = indices.at(i + 2);
+
+				// Get the three vertices of a triangle
+				Vector3 vert0 = vertices.at(vertex_idx_1).position;
+				Vector3 vert1 = vertices.at(vertex_idx_2).position;
+				Vector3 vert2 = vertices.at(vertex_idx_3).position;
+
+				// Test if ray hits the triangle
+				intersect_triangle(ray, vert0, vert1, vert2, t, u, v, false);
+
+				// Check if the t value of the ray is positive, increment the rays hit value
+				if (t > 0.0f)
+				{
+					ray.hit++;
+				}
 			}
-		}
-		
-		// If the rays hit value is odd, then its inside a mesh
-		// If the rays hit value is even, then its outside the mesh
-		if (ray.hit & 1) // Bitwise operator
-		{
-			Point temp;
-			temp.position = point.position;
-			saved_points.push_back(temp);
-		}
-	}
 
-	// Create a json file called Points
-	std::ofstream file ( "Points.json" );
+			// If the rays hit value is odd, then its inside a mesh
+			// If the rays hit value is even, then its outside the mesh
+			if (ray.hit & 1) // Bitwise operator
+			{
+				Point temp;
+				temp.position = point.position;
+				saved_points.push_back(temp);
+			}
 
-	if (file.is_open())
-	{
-		// Loop through all the points and write into the file
-		for (auto& point : saved_points)
-		{
-			std::string x = std::to_string(point.position.x);
-			std::string y = std::to_string(point.position.y);
-			std::string z = std::to_string(point.position.z);
-
-			// Using escape character https://gillius.org/ctut/app_a.htm
-			// To write " " into file.
-			//file << "{\"position\": { " << "\"x\": " << x + ", \"y\": " + y + ", \"z\": " + z << " }}" << std::endl;
-			file << "{ " << "\"x\": " << x + ", \"y\": " + y + ", \"z\": " + z << " }" << std::endl;
+			// Once all the correct points are store inside saved_points.
+			// Clear the rand_points since it will not be used anymore.
+			rand_points.clear();
 		}
-		file.close();
+		// Finally, when all points are generated, save them to a json file
+		std::cout << "Writing saved points into file" << std::endl;
+		printToJson(file, saved_points);
+		std::cout << "Finished writing to file. Closing file..." << std::endl;
 	}
-	else
-	{
-		std::cout << "Cannot open file\n";
-	}
+	
+
+
+	//std::vector<Point> saved_points;
+	//std::vector<Point> rand_points;
+
+	//// Generate a set of points within a unit cube space
+	//for (int i = 0; i < max_num_point; i++)
+	//{
+	//	Point point;
+	//	point.position = generate_random_position(range_min, range_max);
+	//	rand_points.push_back(point);
+	//}
+
+	//// Loop through each point, generate a ray and check if the point is within the mesh
+	//for (auto& point : rand_points)
+	//{
+	//	Ray ray;
+	//	ray.origin = point.position;
+	//	ray.direction = Vector3(1.0f, 0.0f, 0.0f);
+
+	//	// Loop through mesh triangles and check if ray collided
+	//	for (int i = 0; i < indices.size(); i += 3)
+	//	{
+	//		float u = 0;
+	//		float v = 0;
+	//		float t = 0;
+
+	//		int vertex_idx_1 = indices.at(i);
+	//		int vertex_idx_2 = indices.at(i + 1);
+	//		int vertex_idx_3 = indices.at(i + 2);
+
+	//		// Get the three vertices of a triangle
+	//		Vector3 vert0 = vertices.at(vertex_idx_1).position;
+	//		Vector3 vert1 = vertices.at(vertex_idx_2).position;
+	//		Vector3 vert2 = vertices.at(vertex_idx_3).position;
+
+	//		// Test if ray hits triangle
+	//		intersect_triangle(ray, vert0, vert1, vert2, t, u, v, false);
+
+	//		// If the t value of the ray is positive, increment the rays hit value
+	//		if (t > 0.0f)
+	//		{
+	//			ray.hit++;
+	//		}
+	//	}
+	//	
+	//	// If the rays hit value is odd, then its inside a mesh
+	//	// If the rays hit value is even, then its outside the mesh
+	//	if (ray.hit & 1) // Bitwise operator
+	//	{
+	//		Point temp;
+	//		temp.position = point.position;
+	//		saved_points.push_back(temp);
+	//	}
+	//}
+
+	//// Create 3 json file called for training, validation and testing
+	//std::ofstream train_file ( "Training.json" );
+	//std::ofstream valid_file ( "Validation.json" );
+	//std::ofstream test_file ("Testing.json");
+
+	//std::cout << "Generating training file" << std::endl;
+	//if (!printToJson(train_file, saved_points)) return 0;
+
+	//std::cout << "Generating validation file" << std::endl;
+	//if (!printToJson(valid_file, saved_points)) return 0;
+
+	//std::cout << "Generating testing file" << std::endl;
+	//if (!printToJson(test_file, saved_points)) return 0;
+
+	////if (train_file.is_open())
+	////{
+	////	// Loop through all the points and write into the file
+	////	for (auto& point : saved_points)
+	////	{
+	////		std::string x = std::to_string(point.position.x);
+	////		std::string y = std::to_string(point.position.y);
+	////		std::string z = std::to_string(point.position.z);
+
+	////		// Using escape character https://gillius.org/ctut/app_a.htm
+	////		// To write " " into file.
+	////		//file << "{\"position\": { " << "\"x\": " << x + ", \"y\": " + y + ", \"z\": " + z << " }}" << std::endl;
+	////		train_file << "{ " << "\"x\": " << x + ", \"y\": " + y + ", \"z\": " + z << " }" << std::endl;
+	////	}
+	////	train_file.close();
+	////}
+	////else
+	////{
+	////	std::cout << "Cannot open file\n";
+	////}
 
 	return 1;
 }
