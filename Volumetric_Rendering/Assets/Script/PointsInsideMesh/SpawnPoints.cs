@@ -19,13 +19,12 @@ public class Positions
 [ExecuteInEditMode]
 public class SpawnPoints : MonoBehaviour
 {
-    public TextAsset jsonFile;
-
+    [SerializeField] public TextAsset jsonFile;
     void Start()
     {
         // Create a default sphere for representing each point
         GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        sphere.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+        sphere.transform.localScale = new Vector3(0.03f, 0.03f, 0.03f);
         
         // Read the json file with all of the position
         Positions positionsInJson = JsonUtility.FromJson<Positions>(jsonFile.text);
@@ -37,15 +36,7 @@ public class SpawnPoints : MonoBehaviour
             float y = float.Parse(position.y);
             float z = float.Parse(position.z);
 
-            Vector3 newPosition = new Vector3(x, y, z);
-            
-            Instantiate(sphere, newPosition, Quaternion.identity);
+            Instantiate(sphere, new Vector3(x, y, z), Quaternion.identity, transform.parent);
         }
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 }
