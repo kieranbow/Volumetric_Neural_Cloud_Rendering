@@ -20,26 +20,27 @@ class mlp(nn.Module):
         # Number of hidden nodes in each layer
         # Same number of hidden layers as NeRF
         hidden_layer_1 = 256
-        hidden_layer_2 = 256
-        hidden_layer_3 = 256
-        hidden_layer_4 = 256
-        hidden_layer_5 = 256
-        hidden_layer_6 = 256
-        hidden_layer_7 = 256
-        hidden_layer_8 = 256
+        #hidden_layer_2 = 256
+        #hidden_layer_3 = 256
+        #hidden_layer_4 = 256
+        #hidden_layer_5 = 256
+        #hidden_layer_6 = 256
+        #hidden_layer_7 = 256
+        #hidden_layer_8 = 256
 
         # number of outputs
         numberOfClasses = 3
         
         self.fc1 = nn.Linear(input_size, hidden_layer_1)
-        self.fc2 = nn.Linear(hidden_layer_1, hidden_layer_2)
-        self.fc3 = nn.Linear(hidden_layer_2, hidden_layer_3)
-        self.fc3 = nn.Linear(hidden_layer_3, hidden_layer_4)
-        self.fc3 = nn.Linear(hidden_layer_4, hidden_layer_5)
-        self.fc3 = nn.Linear(hidden_layer_5, hidden_layer_6)
-        self.fc3 = nn.Linear(hidden_layer_6, hidden_layer_7)
-        self.fc3 = nn.Linear(hidden_layer_7, hidden_layer_8)
-        self.fc4 = nn.Linear(hidden_layer_8, numberOfClasses)
+        self.fc2 = nn.Linear(hidden_layer_1, numberOfClasses)
+        #self.fc2 = nn.Linear(hidden_layer_1, hidden_layer_2)
+        #self.fc3 = nn.Linear(hidden_layer_2, hidden_layer_3)
+        #self.fc3 = nn.Linear(hidden_layer_3, hidden_layer_4)
+        #self.fc3 = nn.Linear(hidden_layer_4, hidden_layer_5)
+        #self.fc3 = nn.Linear(hidden_layer_5, hidden_layer_6)
+        #self.fc3 = nn.Linear(hidden_layer_6, hidden_layer_7)
+        #self.fc3 = nn.Linear(hidden_layer_7, hidden_layer_8)
+        #self.fc4 = nn.Linear(hidden_layer_8, numberOfClasses)
         
         self.dropout = nn.Dropout(p = 0.2)
         
@@ -48,11 +49,12 @@ class mlp(nn.Module):
         
         # Add the hidden layers with a relu activiation function
         x = self.dropout(F.relu(self.fc1(x)))
-        x = self.dropout(F.relu(self.fc2(x)))
-        x = self.dropout(F.relu(self.fc3(x)))
+        #x = self.dropout(F.relu(self.fc2(x)))
+        #x = self.dropout(F.relu(self.fc3(x)))
         
         # Add the output layer with softmax
-        x = F.log_softmax(self.fc4(x), dim= 1)
+        #x = F.log_softmax(self.fc4(x), dim= 1)
+        x = F.log_softmax(self.fc2(x), dim= 1)
         return x;
 
 #%% Init mlp model
@@ -65,6 +67,10 @@ print(model)
 # https://colab.research.google.com/github/bentrevett/pytorch-sentiment-analysis/blob/master/A%20-%20Using%20TorchText%20with%20Your%20Own%20Datasets.ipynb
 # https://stackoverflow.com/questions/55109684/how-to-handle-large-json-file-in-pytorch
 # https://www.youtube.com/watch?v=KRgq4VnCr7I
+# https://stats.stackexchange.com/questions/161189/train-a-neural-network-to-distinguish-between-even-and-odd-numbers
+# https://www.analyticsvidhya.com/blog/2020/01/first-text-classification-in-pytorch/
+# https://dzlab.github.io/dltips/en/pytorch/torchtext-datasets/
+
 batch_size = 32
 
 class JsonDataset(IterableDataset):
