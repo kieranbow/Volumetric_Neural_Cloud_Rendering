@@ -4,13 +4,15 @@ import torch
 from torch import nn, optim
 import torch.nn.functional as F
 import json
-from torch.utils.data import DataLoader, IterableDataset
+from torch.utils.data import DataLoader, IterableDataset, Dataset
+
+import pandas as pd
 
 from torchtext.legacy import data
 from torchtext.legacy import datasets
 
 #%% Multi-Layered Perceptron
-input_size = 2352
+input_size = 3
 
 class mlp(nn.Module):
     # init the mlp with 8 hidden layers and output
@@ -18,43 +20,16 @@ class mlp(nn.Module):
         super().__init__()
         
         # Number of hidden nodes in each layer
-        # Same number of hidden layers as NeRF
-        hidden_layer_1 = 256
-        #hidden_layer_2 = 256
-        #hidden_layer_3 = 256
-        #hidden_layer_4 = 256
-        #hidden_layer_5 = 256
-        #hidden_layer_6 = 256
-        #hidden_layer_7 = 256
-        #hidden_layer_8 = 256
+        hidden_layer_1 = 3
 
         # number of outputs
-        numberOfClasses = 3
+        numberOfClasses = 1
         
-        self.fc1 = nn.Linear(input_size, hidden_layer_1)
-        self.fc2 = nn.Linear(hidden_layer_1, numberOfClasses)
-        #self.fc2 = nn.Linear(hidden_layer_1, hidden_layer_2)
-        #self.fc3 = nn.Linear(hidden_layer_2, hidden_layer_3)
-        #self.fc3 = nn.Linear(hidden_layer_3, hidden_layer_4)
-        #self.fc3 = nn.Linear(hidden_layer_4, hidden_layer_5)
-        #self.fc3 = nn.Linear(hidden_layer_5, hidden_layer_6)
-        #self.fc3 = nn.Linear(hidden_layer_6, hidden_layer_7)
-        #self.fc3 = nn.Linear(hidden_layer_7, hidden_layer_8)
-        #self.fc4 = nn.Linear(hidden_layer_8, numberOfClasses)
-        
-        self.dropout = nn.Dropout(p = 0.2)
+        self.fc1 = nn.Linear(input_size, numberOfClasses)
         
     def forward(self, x):
-        x = x.view(-1, input_size)
+        x = F.sigmoid(self.fc1(x))
         
-        # Add the hidden layers with a relu activiation function
-        x = self.dropout(F.relu(self.fc1(x)))
-        #x = self.dropout(F.relu(self.fc2(x)))
-        #x = self.dropout(F.relu(self.fc3(x)))
-        
-        # Add the output layer with softmax
-        #x = F.log_softmax(self.fc4(x), dim= 1)
-        x = F.log_softmax(self.fc2(x), dim= 1)
         return x;
 
 #%% Init mlp model
@@ -73,17 +48,18 @@ print(model)
 
 batch_size = 32
 
-class JsonDataset(IterableDataset):
-    def __init__(self, file):
-        self.file = file
-        
-    def __iter__(self):
-        #for json_file in self.file:
-            with open(self.file) as f:
-                for sample_line in f:
-                    sample = json.loads(sample_line)
-                    yield sample['x'], sample ['y'], sample ['z']
-
+# =============================================================================
+# class JsonDataset(IterableDataset):
+#     def __init__(self, file):
+#         self.file = file
+#         
+#     def __iter__(self):
+#         #for json_file in self.file:
+#             with open(self.file) as f:
+#                 for sample_line in f:
+#                     sample = json.loads(sample_line)
+#                     yield sample['x'], sample ['y'], sample ['z']
+# =============================================================================
 
 #%%
 #define field objects
@@ -103,85 +79,84 @@ train_dataset, valid_dataset, test_dataset = data.TabularDataset.splits(
     fields      = fields)
 
 # Print 5 elements from training dataset
-print("printing 5 elements from training dataset")
-for i in range(5):
-    print(vars(train_dataset[i]))
+#print("printing 5 elements from training dataset")
+#for i in range(5):
+    #print(vars(train_dataset[i]))
 
 # Print 5 elements from validation dataset
-print("printing 5 elements from validation dataset")
-for i in range(5):
-    print(vars(valid_dataset[i]))
+#print("printing 5 elements from validation dataset")
+#for i in range(5):
+    #print(vars(valid_dataset[i]))
     
 # Print 5 elements from testing dataset
-print("printing 5 elements from testing dataset")
-for i in range(5):
-    print(vars(test_dataset[i]))
+#print("printing 5 elements from testing dataset")
+#for i in range(5):
+    #print(vars(test_dataset[i]))
 
 #%%
+#dataset = JsonDataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Points.json')
+#dataLoader = DataLoader(dataset, batch_size)
 
-#list = []
-#with open('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Points.json') as f:
-    #for obj in f:
-       # line = json.loads(obj)
-        #list.append(line)
-        
-#for line in list:
-   # print(line["x"], line["y"], line["z"])
+def collate_fn(batch):
+    texts, labels = [], []
+    
+    for label, txt in batch:
+        texts.append(txt)
+        labels.append(label)
+    return texts, labels
 
-dataset = JsonDataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Points.json')
-dataLoader = DataLoader(dataset, batch_size)
-
-#%% Shows the first five entires in the dataset
-print("Showing the first five entires in the dataset")
-dataIter = iter(dataset)
-print(next(dataIter))
-print(next(dataIter))
-print(next(dataIter))
-print(next(dataIter))
-print(next(dataIter))
+dataLoader = DataLoader(train_dataset, 4, shuffle=False)
 
 #%% Train model
-
-criterion = nn.NLLLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.003)
-
 num_epochs = 100
-valid_loss_min = np.Inf
-training_loss = []
-valiation_loss = []
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
 for epoch in range(num_epochs):
-    train_loss = 0.0
-    valid_loss = 0.0
+    loss = 0
+    correct = 0
+
+    model.train()
+    for _data, target in dataLoader:
+        optimizer.zero_grad()
+        output = model(_data)
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()
     
-    #for batch in dataLoader:
-        #y = model(batch)
+#%%
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def sigmoid_derivative(x):
+    return x * (1 - x)
+
+training_inputs = np.array([[0, 0, 1],
+                            [1, 1, 1],
+                            [1, 0, 0],
+                            [0, 1, 1]])
+
+training_output = np.array([[0, 1, 1, 0]]).T
+
+np.random.seed(1)
+
+synaptic_weights = 2 * np.random.random((3, 1)) - 1
+
+print("Random: ")
+print(synaptic_weights)
+
+for iter in range(20000):
+    input_layer = training_inputs
+    outputs = sigmoid(np.dot(input_layer, synaptic_weights))
     
+    error = training_output - outputs
+    adjustment = error * sigmoid_derivative(outputs)
     
-    #model.train()
-    
-    #for train_data, target in dataLoader:
-       # optimizer.zero_grad()
-       # output = model(train_data)
-        #loss = criterion(output, target)
-       # loss.backward()
-       # optimizer.step()
-       # train_loss += loss.item() * train_data.size(0)
-        
-   # for valid_data, target in dataLoader:
-       # output = model(valid_data)
-       # loss = criterion(output, target)
-       # valid_loss += loss.item() * valid_data.size(0)
-    
-    #train_loss = train_loss / len(dataLoader.sampler)
-    #valid_loss = valid_loss / len(dataLoader.sampler)
-    
-   # training_loss.append(train_loss)
-   # valiation_loss.append(valid_loss)
-    
-   # print('Epoch: {} \tTraining Loss: {:.2f} \tValidation Loss: {:.2f}'.format(
-   # epoch + 1, 
-   # train_loss,
-   # valid_loss
-   # ))
-    
+    synaptic_weights += np.dot(input_layer.T, adjustment)
+
+print("Synaptic weights after training: ")
+print(synaptic_weights)
+
+print("Outputs")
+print(outputs)
+
