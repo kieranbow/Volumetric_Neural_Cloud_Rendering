@@ -288,7 +288,7 @@ bool writeToCSV(std::ofstream& file, std::vector<Point>& points)
 	// Make sure the file is open before writing into it
 	if (file.is_open())
 	{
-		file << "x, y, z" << std::endl;
+		file << "x, y, z, density" << std::endl;
 
 		// Loop through all the points and write into the file
 		for (auto& point : points)
@@ -297,7 +297,7 @@ bool writeToCSV(std::ofstream& file, std::vector<Point>& points)
 			std::string y = std::to_string(point.position.y);
 			std::string z = std::to_string(point.position.z);
 
-			file << x + ", " + y + ", " + z << std::endl;
+			file << x + ", " + y + ", " + z + ", 1.0" << std::endl;
 		}
 		file.close();
 		file.flush();
