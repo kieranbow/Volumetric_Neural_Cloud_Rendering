@@ -8,29 +8,33 @@ from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 
 #%% Multi-Layered Perceptron
-input_size = 3 * 1
-
-class mlp(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        # Number of hidden nodes in each layer
-        hidden_layer_1 = 3
-
-        # number of outputs
-        numberOfClasses = 1
-        
-        #self.fc1 = nn.Linear(input_size, numberOfClasses)
-        self.fc1= nn.AdaptiveMaxPool1d(input_size, numberOfClasses)
-        
-    def forward(self, x):
-        x = x.view(x.size(0), -1)
-        x = F.sigmoid(self.fc1(x))
-        return x;
-
+# =============================================================================
+# input_size = 3 * 1
+# 
+# class mlp(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+# 
+#         # Number of hidden nodes in each layer
+#         hidden_layer_1 = 3
+# 
+#         # number of outputs
+#         numberOfClasses = 1
+#         
+#         #self.fc1 = nn.Linear(input_size, numberOfClasses)
+#         self.fc1= nn.AdaptiveMaxPool1d(input_size, numberOfClasses)
+#         
+#     def forward(self, x):
+#         x = x.view(x.size(0), -1)
+#         x = F.sigmoid(self.fc1(x))
+#         return x;
+# 
+# =============================================================================
 #%% Init mlp model
-model = mlp()
-print(model)
+# =============================================================================
+# model = mlp()
+# print(model)
+# =============================================================================
 
 #%% -----Loading and creating the dataset-----
 
@@ -68,9 +72,65 @@ training_data   = CSVdataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Vo
 validation_data = CSVdataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Data\\Validation.csv')
 testing_data    = CSVdataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Data\\Testing.csv')
 
-for i in range(len(training_data)):
-     sample = training_data[i]
-     print(i, sample['x'], sample['y'], sample['z'], sample['density'])
+# =============================================================================
+# for i in range(len(training_data)):
+#      sample = training_data[i]
+#      print(i, sample['x'], sample['y'], sample['z'], sample['density'])
+# =============================================================================
+
+
+#%%
+batch_size = 1
+
+class AI(nn.Module):
+     def __init__(self):
+         super().__init__()
+ 
+         input_size = 3
+         output_size = 1
+         hiddenLayer_size = 3
+         
+         self.fc1 = nn.Linear(input_size, hiddenLayer_size)
+         self.fc2 = nn.Linear(hiddenLayer_size, output_size)
+         
+     def forward(self, x):
+         x = F.relu(self.fc1(x))
+         x = F.relu(self.fc2(x))
+         return x;
+ 
+model = AI()
+print(model)
+
+loss_func = nn.MSELoss(reduction='sum')
+optimizer = optim.Adam(model.parameters(), lr=0.002)
+
+#%%
+sample = np.array([0,0,0], dtype=float)
+output = np.array([0], dtype=float)
+
+def sampleFromDataset(index, data, sample, output_ref):
+    sample[0] = data[index]['x']
+    sample[1] = data[index]['y']
+    sample[2] = data[index]['z']
+    
+    output_ref[0] = data[index]['density']
+    
+    return sample, output_ref
+
+print(sampleFromDataset(0, training_data, sample, output))
+
+
+#%%
+num_epochs = 100
+
+for i in range(num_epochs):
+    sampleFromDataset(i, training_data, sample, output)
+    pred = model(torch.autograd.Variable(torch.FloatTensor(sample)))
+    loss = loss_func(pred, torch.autograd.Variable(torch.FloatTensor(output)))
+    print(i, loss.item())
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
 
 
 #%%
