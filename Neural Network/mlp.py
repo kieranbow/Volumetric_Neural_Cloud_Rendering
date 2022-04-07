@@ -3,38 +3,11 @@ import numpy as np
 import torch
 from torch import nn, optim
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 import pandas as pd
 
-#%% Multi-Layered Perceptron
-# =============================================================================
-# input_size = 3 * 1
-# 
-# class mlp(nn.Module):
-#     def __init__(self):
-#         super().__init__()
-# 
-#         # Number of hidden nodes in each layer
-#         hidden_layer_1 = 3
-# 
-#         # number of outputs
-#         numberOfClasses = 1
-#         
-#         #self.fc1 = nn.Linear(input_size, numberOfClasses)
-#         self.fc1= nn.AdaptiveMaxPool1d(input_size, numberOfClasses)
-#         
-#     def forward(self, x):
-#         x = x.view(x.size(0), -1)
-#         x = F.sigmoid(self.fc1(x))
-#         return x;
-# 
-# =============================================================================
-#%% Init mlp model
-# =============================================================================
-# model = mlp()
-# print(model)
-# =============================================================================
+import random
 
 #%% -----Loading and creating the dataset-----
 
@@ -77,8 +50,6 @@ testing_data    = CSVdataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Vo
 #      sample = training_data[i]
 #      print(i, sample['x'], sample['y'], sample['z'], sample['density'])
 # =============================================================================
-
-
 #%%
 batch_size = 1
 
@@ -108,69 +79,56 @@ optimizer = optim.Adam(model.parameters(), lr=0.002)
 sample = np.array([0,0,0], dtype=float)
 output = np.array([0], dtype=float)
 
-def sampleFromDataset(index, data, sample, output_ref):
-    sample[0] = data[index]['x']
-    sample[1] = data[index]['y']
-    sample[2] = data[index]['z']
-    
-    output_ref[0] = data[index]['density']
+# Randomly sample a line in the dataset and extract x, y, z, density 
+# and return it
+def sampleFromDataset(data, sample, output_ref):
+    idx = random.randrange(len(data))
+    sample[0]       = data[idx]['x']
+    sample[1]       = data[idx]['y']
+    sample[2]       = data[idx]['z']
+    output_ref[0]   = data[idx]['density']
     
     return sample, output_ref
 
-print(sampleFromDataset(0, training_data, sample, output))
+print(sampleFromDataset(training_data, sample, output))
 
 
 #%%
-num_epochs = 100
+num_epochs = 1000
 
 for i in range(num_epochs):
-    sampleFromDataset(i, training_data, sample, output)
+    sampleFromDataset(training_data, sample, output)
     pred = model(torch.autograd.Variable(torch.FloatTensor(sample)))
     loss = loss_func(pred, torch.autograd.Variable(torch.FloatTensor(output)))
-    print(i, loss.item())
+    #print(i, loss.item())
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
-
 #%%
-train_iter        = DataLoader(training_data, batch_size=3, shuffle=False)
-validation_iter   = DataLoader(validation_data, batch_size=3, shuffle=False)
-testing_iter      = DataLoader(testing_data, batch_size=3, shuffle=False)
+def writeLayer(weights, name, file):
+    if len(list(weights[name].shape)) == 2:
+        for y in range(weights[name].shape[0]):
+            line = ""
+            for x in range(weights[name].shape[1]):
+                line = line + " " + str(float(weights[name][y][x]))
+                line = line + "\n"
+                file.write(line)
+    else:
+        line = ""
+        for x in range(weights[name].shape[0]):
+            line = line + " " + str(float(weights[name][x]))
+            line = line + "\n"
+            file.write(line)
 
-
-#for batch, sample_batch in enumerate(train_iter):
-#     print(batch, sample_batch['x'], sample_batch['y'], sample_batch['z'], sample_batch['density'])
-
-#%% -----Train model-----
-criterion  = nn.NLLLoss()
-optimizer = optim.Adam(list(model.parameters()), lr=0.002)
-
-loss_func = nn.NLLLoss()
-
-n_epochs = 10
-
-valid_loss_min = np.inf
-
-train_losses, val_losses = [], []
-
-for epoch in range(n_epochs):
-    train_loss = 0.0
-    valid_loss = 0.0
+def write(weights, file):
+    keys = weights.keys()
     
-    model.train()
-    
-#    for i, (x, y, z, d) in enumerate(train_iter):
-#         optimizer.zero_grad()
-#         output = model(i)
-
-    for i, _data in enumerate(train_iter, 0):
-        x, y, z, d = _data.values()
-#        print(_data)
-        optimizer.zero_grad()       
-        output = model(x)
-        loss = loss_func(output, y)
-        loss.backward()
-        optimizer.step()
-        train_loss += loss.item() * _data.size(0)
+    for k in keys:
+        writeLayer(weights, k, file) 
         
+weights = model.state_dict()
+
+file = open("D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Weights.txt", "w")
+write(weights, file)
+file.close()
