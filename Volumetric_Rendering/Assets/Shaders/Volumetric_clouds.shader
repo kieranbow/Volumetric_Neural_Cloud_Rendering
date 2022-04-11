@@ -111,55 +111,41 @@ Shader "Custom/Volumetric_clouds"
             float _cloud_beer, _density_to_sun, _cloud_attenuation, _out_scattering_ambient, _param;
             int _NumStep;
             
-            float sample_density(float3 position, box bounding_box, float height_percent)
+            float sample_density(float3 position, const float height_percent)
             {
-                // Current sample position
+                // Create uvw using the sample position and the scale and offset of the cloud texture
                 const float3 uvw = position * _CloudScale * 0.001f + _CloudOffset * 0.01f;
-                const float3 detail_uvw = position * _DetailScale * 0.001f + _DetailOffset * 0.01f;
+                
+                // Sample the weather map
+                const float4 weather_map        = Weather_tex.SampleLevel(samplerWeather_tex, position.xz / _mapScale, MIP_LEVEL);
+                const float weather_map_control = normalize_weather_map(weather_map, _globalCoverage);
 
-                // Weather map
-                float4 sample_weather = Weather_tex.SampleLevel(samplerWeather_tex, position.xz / _mapScale, MIP_LEVEL);
-                float low_coverage = sample_weather.r;
-                float high_coverage = sample_weather.g;
-                float peaks = sample_weather.b;
-                float density = sample_weather.a;
-                float WMc = max(low_coverage, saturate(_globalCoverage - 0.5f) * high_coverage * 2.0f);
+                // Alter the cloud base shape using a altering shape height function
+                const float shape_altering = alter_shape_height(height_percent, weather_map);
 
-                // Shape Altering height Function
-                float SRb = saturate(remap(height_percent, MIN, 0.07f, MIN, MAX));
-                float SRt = saturate(remap(height_percent, peaks * 0.2f, peaks, MAX, MIN));
-                float SA = SRb * SRt;
-
-                // Density Altering Height Function
-                float DRb = height_percent * saturate(remap(height_percent, MIN, 0.15f, MIN, MAX));
-                float DRt = saturate(remap(height_percent, 0.9f, MAX, MAX, MIN));
-                float DA = _globalCoverage * DRb * DRt * density * 2.0f;
+                // Alter the cloud's density using a altering density height Function
+                const float density_altering = alter_density_height(height_percent, weather_map, _globalCoverage);
                 
                 // Sample 3D noise
                 float4 shape_noise = Shape_tex.SampleLevel(samplerShape_tex, uvw, MIP_LEVEL);
-                float4 detail_noise = Noise_tex.SampleLevel(samplerNoise_tex, detail_uvw, MIP_LEVEL);
-
-                // Base Shape
-                float SNsample = remap(shape_noise.r, generate_fbm(shape_noise) - 1.0f, MAX, MIN, MAX);
-                float SN = saturate(remap(SNsample * SA, 1.0f - _globalCoverage * WMc, MAX, MIN, MAX)); //* DA;
-
-                // Detail Noise
-                if (SN > 0.0f)
-                {
-                    float DNfbm = generate_fbm(detail_noise);
-                    float e = -(_globalCoverage * 0.75f);
-                    float DNmod = 0.35f * e * lerp(DNfbm, 1.0f - DNfbm, saturate(height_percent * 5.0f));
-                    float d = saturate(remap(SN, DNmod, MAX, MIN, MAX)) * DA;
-                    return d * _DensityMulti;
-                }
-
-                return 0;
                 
-                // const float height_gradient = saturate(remap(height_percent, 0.0f, 0.2f, 0.0f, 1.0f)) * saturate(remap(height_percent, 1.0f, 0.7f, 0.0f, 1.0f));
-                // float base_shape = generate_base_shape(shape_noise);
-                // base_shape *= alter_shape_height(height_percent, peaks);
+                // Create the base cloud shape
+                const float SNsample = remap(shape_noise.r, generate_fbm(shape_noise) - MAX, MAX, MIN, MAX);
+                const float SN  = saturate(remap(SNsample * shape_altering, MAX - _globalCoverage * weather_map_control, MAX, MIN, MAX)) * shape_altering; // density_altering
 
-                //return max(d - _DensityThreshold, 0.0f) * _DensityMulti;
+                // Create the detail noise shape
+                if (SN > MIN)
+                {
+                    const float3 detail_uvw     = position * _DetailScale * 0.001f + _DetailOffset * 0.01f;
+                    const float4 detail_noise   = Noise_tex.SampleLevel(samplerNoise_tex, detail_uvw, MIP_LEVEL);
+                    
+                    const float detail_noise_fbm = generate_fbm(detail_noise);
+                    const float e = -(_globalCoverage * 0.75f);
+                    const float detail_noise_mod = 0.35f * e * lerp(detail_noise_fbm, MAX - detail_noise_fbm, saturate(height_percent * 5.0f));
+                    const float density = saturate(remap(SN, detail_noise_mod, MAX, MIN, MAX)) * density_altering;
+                    return density * _DensityMulti;
+                }
+                return 0;
             }
 
             float3 sample_light(float cos_angle, float height_percentage, float density)
@@ -194,15 +180,15 @@ Shader "Custom/Volumetric_clouds"
             // Pixel Shader
             fixed4 frag (const v2f i) : SV_Target
             {
+                // Primary camera ray
+                Ray primary_ray;
+                primary_ray.origin = _WorldSpaceCameraPos;
+                primary_ray.direction = normalize(i.view_vector);
+                
                 // Depth texture
                 const float non_linear_depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
                 const float z_depth = LinearEyeDepth(non_linear_depth) * length(i.view_vector);
                 
-                // Ray
-                Ray ray;
-                ray.origin = _WorldSpaceCameraPos;
-                ray.direction = normalize(i.view_vector);
-
                 // Box data
                 box box;
                 box.size = _BoundsMax - _BoundsMin;
@@ -211,56 +197,45 @@ Shader "Custom/Volumetric_clouds"
                 box.bound_min = _BoundsMin;
                 
                 // Ray box intersection
-                const float2 ray_box = ray_box_dist(box.bound_min, box.bound_max, ray);
+                const float2 ray_box = ray_box_dist(box.bound_min, box.bound_max, primary_ray);
                 const float dist_to_box = ray_box.x;
                 const float dist_inside_box = ray_box.y;
 
                 // Ray entry point
-                const float3 entry_point = ray.origin + ray.direction * dist_to_box;
+                const float3 entry_point = primary_ray.origin + primary_ray.direction * dist_to_box;
 
                 float dist_travelled = 0.0f;
                 const float step_size = dist_inside_box / _NumStep;
                 const float dist_limit = min(z_depth - dist_to_box, dist_inside_box);
 
                 // Cloud lighting
-                float3 light_dir = normalize(lerp(_WorldSpaceLightPos0.xyz, _WorldSpaceLightPos0.xyz - ray.origin, _WorldSpaceLightPos0.w));
-                float cos_angle = dot(ray.direction, light_dir);
+                float cos_angle = dot(primary_ray.direction, _WorldSpaceLightPos0.xyz);
 
                 float transmittance = 1.0f;
                 float3 total_light = float3(0.0f, 0.0f, 0.0f);
+
+                float phase = 0.8f + (henyey_Greenstein(cos_angle, 0.85f) * 0.5f + henyey_Greenstein(cos_angle, -0.3f) * 0.5f) * 0.15f;
                 
                 while (dist_travelled < dist_limit)
                 {
-                    // Sample position
-                    const float3 sample_position = ray.origin + ray.direction * (dist_to_box + dist_travelled);
-
+                    // Sample position along the view direction
+                    const float3 sample_position = entry_point + primary_ray.direction * dist_travelled;
+                    
                     // Height Percentage
-                    float height_percent = calculate_height_percentage(sample_position, box.bound_min, box.size);
-
-
-                    float density = sample_density(sample_position, box, height_percent);
+                    const float height_percent = calculate_height_percentage(sample_position, box.bound_min, box.size);
+                    
+                    // Sample density
+                    float density = sample_density(sample_position, height_percent) * step_size;
 
                     if(density > 0.0f)
                     {
-                        Ray light_ray;
-                        light_ray.direction = 1.0f / _WorldSpaceLightPos0.xyz;
-                        light_ray.origin = sample_position;
-
-                        float light_march = sample_light(cos_angle, height_percent, density);
+                        float3 light_march = sample_light(cos_angle, height_percent, density);
                         total_light += density * transmittance * light_march;
-                        transmittance *= exp(-density * _param);
-
-                        if (transmittance < 0.01f)
-                        {
-                            break;
-                        }
-
-                        if (transmittance > 1.0f)
-                        {
-                            break;
-                        }
+                        transmittance *= exp(-density * _cloud_attenuation);
+                    
+                        if (transmittance < 0.01f) break;
+                        if (transmittance > 1.0f)  break;
                     }
-
                     dist_travelled += step_size;
                 }
 
