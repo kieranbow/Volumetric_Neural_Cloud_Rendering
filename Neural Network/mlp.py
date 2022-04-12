@@ -76,6 +76,14 @@ loss_func = nn.MSELoss(reduction='sum')
 optimizer = optim.Adam(model.parameters(), lr=0.002)
 
 #%%
+for name, parameter in model.named_parameters():
+    print('name: ', name)
+    print(type(parameter))
+    print('param.shape: ', parameter.shape)
+    print('param.requires_grad: ', parameter.requires_grad)
+    print('=========')
+
+#%%
 sample = np.array([0,0,0], dtype=float)
 output = np.array([0], dtype=float)
 
@@ -94,7 +102,9 @@ print(sampleFromDataset(training_data, sample, output))
 
 
 #%%
-num_epochs = 1000
+print('Training model')
+
+num_epochs = 25000
 
 for i in range(num_epochs):
     sampleFromDataset(training_data, sample, output)
@@ -105,20 +115,34 @@ for i in range(num_epochs):
     loss.backward()
     optimizer.step()
 
+print('Finished training model')
 #%%
-def writeLayer(weights, name, file):
-    if len(list(weights[name].shape)) == 2:
-        for y in range(weights[name].shape[0]):
-            line = ""
-            for x in range(weights[name].shape[1]):
-                line = line + " " + str(float(weights[name][y][x]))
-                line = line + "\n"
+# =============================================================================
+# def writeLayer(weights, key, file):
+#     if len(list(weights[key].shape)) == 2:
+#         for y in range(weights[key].shape[0]):
+#             line = ""
+#             for x in range(weights[key].shape[1]):
+#                 line = line + " " + str(float(weights[key][y][x]))
+#             line = line + "\n"
+#             file.write(line)
+#     else:
+#         line = ""
+#         for x in range(weights[key].shape[0]):
+#             line = line + " " + str(float(weights[key][x]))
+#         line = line + "\n"
+#         file.write(line)
+# =============================================================================
+
+def writeLayer(weights, key, file):
+    if len(list(weights[key].shape)) == 2:
+        for y in range(weights[key].shape[0]):
+            for x in range(weights[key].shape[1]):
+                line = str(float(weights[key][y][x])) + "\n"
                 file.write(line)
     else:
-        line = ""
-        for x in range(weights[name].shape[0]):
-            line = line + " " + str(float(weights[name][x]))
-            line = line + "\n"
+        for x in range(weights[key].shape[0]):
+            line = str(float(weights[key][x])) + "\n"
             file.write(line)
 
 def write(weights, file):
@@ -126,9 +150,25 @@ def write(weights, file):
     
     for k in keys:
         writeLayer(weights, k, file) 
-        
+#%%
+# https://towardsdatascience.com/everything-you-need-to-know-about-saving-weights-in-pytorch-572651f3f8de
+print('output weights')
 weights = model.state_dict()
 
+for key in weights:
+    print('key: ', key)
+    print('shape: ', weights[key].shape)
+        
+    if len(list(weights[key].shape)) == 2:
+        for y in range(weights[key].shape[0]):
+            for x in range(weights[key].shape[1]):
+                print(key, str(float(weights[key][y][x])))
+    else:
+        for x in range(weights[key].shape[0]):
+            print(key, str(float(weights[key][x])))
+    print('=========')
+   
+#%%    
 file = open("D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Weights.txt", "w")
 write(weights, file)
 file.close()

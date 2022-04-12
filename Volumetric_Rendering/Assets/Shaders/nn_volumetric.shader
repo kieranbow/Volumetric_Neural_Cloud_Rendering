@@ -101,17 +101,20 @@ Shader "Custom/nn_volumetric"
             float _cloud_beer, _density_to_sun, _cloud_attenuation, _out_scattering_ambient, _param;
             int _NumStep;
 
-            float weights[8][4] = {
-                {-0.20719771087169647f, -0.20719771087169647f, 0.3353896141052246f, -0.20719771087169647f},
-                {0.3353896141052246f, 0.4701395332813263f, -0.0421954020857811f, -0.0421954020857811f},
-                {0.2507553696632385f, -0.0421954020857811f, 0.2507553696632385f, -0.0421954020857811f},
-                {0.2507553696632385f, -0.053198859095573425f, 0.0466652549803257f, 0.0466652549803257f},
-                {-0.2594115138053894f, 0.0466652549803257f, -0.2594115138053894f, 0.04129326343536377f},
-                {-0.3532930612564087f, -0.3532930612564087f, 0.5556743144989014f, -0.3532930612564087f},
-                {0.5556743144989014f, 0.5319416522979736f, 0.010805665515363216f, 0.010805665515363216f},
-                {0.14398765563964844f, 0.010805665515363216f, 0.14398765563964844f,  0.13225780427455902f}
-            };
+            // fc1 weights
+            float3 fc1_weights_1 = {0.37478527426719666, 0.2376808226108551, -0.01765313185751438};
+            float3 fc1_weights_2 = {-0.5573139190673828, -0.3534366190433502, 0.026250552386045456};
+            float3 fc1_weights_3 = {0.08791234344244003, -0.016565363854169846, -0.019348561763763428};
 
+            // fc1 bias
+            float3 fc1_bias = {0.47507452964782715, 0.5249373912811279, -0.07115606218576431};
+
+            // fc2 weights
+            float3 fc2_weights = {0.5833595991134644, 0.3923006057739258, -0.002055155811831355};
+            
+            // fc2 bias
+            float fc2_bias = 0.5169274806976318f;
+            
             float relu(float x)
             {
                 return max(0.0f, x);
@@ -122,25 +125,76 @@ Shader "Custom/nn_volumetric"
                 return 1.0f / (1.0f + exp(-x));
             }
             
-            float sample_density_from_nn(float3 position, float weights[8][4])
+            float sample_density_from_nn(float3 inputs, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
             {
-                float neuron = 0.0f;
-                for (int column = 0; column < 3; column++)
-                {
-                    for (int row = 0; row < 3; row++)
-                    {
-                        neuron += dot(position[row], weights[row][column]);
-                    }
-                }
-                return sigmoid(neuron);
+                float neuron_1 = sigmoid(dot(inputs, fc1_weights_1) + fc1_bias);
+                float neuron_2 = sigmoid(dot(inputs, fc1_weights_2) + fc1_bias);
+                float neuron_3 = sigmoid(dot(inputs, fc1_weights_3) + fc1_bias);
+                
+                return sigmoid(dot(float3(neuron_1, neuron_2, neuron_3), fc2_weights) + fc2_bias);
+                
+                // float neuron = 0.0f;
+                // for (int column = 0; column < 3; column++)
+                // {
+                //     for (int row = 0; row < 3; row++)
+                //     {
+                //         neuron += dot(position[row], weights[row][column]);
+                //     }
+                // }
+                // return sigmoid(neuron);
             }
 
-            float sample_density(float3 position, const float height_percent, float weights[8][4])
+            float sample_density(float3 position, const float height_percent, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
             {
                 // Create uvw using the sample position and the scale and offset of the cloud texture
                 const float3 uvw = position * _CloudScale * 0.001f + _CloudOffset * 0.01f;
+
+                // Sample the weather map
+                const float4 weather_map        = Weather_tex.SampleLevel(samplerWeather_tex, position.xz / _mapScale, 0.0f);
+                const float weather_map_control = normalize_weather_map(weather_map, _globalCoverage);
+
+                // Alter the cloud base shape using a altering shape height function
+                const float shape_altering = alter_shape_height(height_percent, weather_map);
+
+                // Alter the cloud's density using a altering density height Function
+                const float density_altering = alter_density_height(height_percent, weather_map, _globalCoverage);
+
+                float density = sample_density_from_nn(uvw, fc1_weights_1, fc1_weights_2, fc1_weights_3, fc1_bias, fc2_weights, fc2_bias);
+
+                // Create the base cloud shape
+                const float SNsample = remap(density, density - MAX, MAX, MIN, MAX);
+                const float SN  = saturate(remap(SNsample * shape_altering, MAX - _globalCoverage * weather_map_control, MAX, MIN, MAX)) * density_altering;
+
+                //if (SN > MIN) return density * _DensityMulti;
+                return density * _DensityMulti;
+            }
+
+            float3 sample_light(float cos_angle, float height_percentage, float density)
+            {
+                // Attenuation
+                float primary = exp(-_cloud_beer * _density_to_sun);
+                float secondary = exp(-_cloud_beer * _cloud_attenuation) * 0.7f;
+                float check = remap(cos_angle, MIN, MAX, secondary, secondary * 0.5f);
+                float attenuation_prob = max(check, primary);
                 
-                return sample_density_from_nn(uvw, weights);
+                // Ambient Out scattering
+                float depth = _out_scattering_ambient * pow(density, remap(height_percentage, 0.3f, 0.9f, 0.5f, MAX));
+                float vertical = pow(saturate(remap(height_percentage, MIN, 0.3f, 0.8f, 1.0f)), 0.8f);
+                float out_scatter = depth * vertical;
+                out_scatter = 1.0 - saturate(out_scatter);
+                float ambient_out_scattering = out_scatter;
+
+                // In out scattering
+                float hg1 = henyey_Greenstein(cos_angle, _in_scattering);
+                float hg2 = _silver_line_intensity * pow(saturate(cos_angle), _silver_line_exp);
+                float hg_inscattering = max(hg1, hg2);
+                float hg_outscattering = henyey_Greenstein(cos_angle, -_out_scattering);
+                float inoutscattering = lerp(hg_inscattering, hg_outscattering, _in_out_scattering);
+                float sun_highlight = inoutscattering;
+
+                float attenuation = attenuation_prob * sun_highlight * ambient_out_scattering;
+                
+                return attenuation;
             }
             
             fixed4 frag (v2f i) : SV_Target
@@ -173,8 +227,11 @@ Shader "Custom/nn_volumetric"
                 const float step_size = dist_inside_box / _NumStep;
                 const float dist_limit = min(z_depth - dist_to_box, dist_inside_box);
 
-                float total_density = 0.0f;
-                
+                // Cloud lighting
+                float cos_angle = dot(primary_ray.direction, _WorldSpaceLightPos0.xyz);
+
+                float transmittance = 1.0f;
+                float3 total_light = float3(0.0f, 0.0f, 0.0f);
                 while (dist_travelled < dist_limit)
                 {
                     // Sample position along the view direction
@@ -184,14 +241,25 @@ Shader "Custom/nn_volumetric"
                     const float height_percent = calculate_height_percentage(sample_position, box.bound_min, box.size);
                     
                     // Sample density
-                    total_density += sample_density(sample_position, height_percent, weights) * step_size * _DensityMulti;
+                    const float density = sample_density(sample_position, height_percent, fc1_weights_1, fc1_weights_2, fc1_weights_3, fc1_bias, fc2_weights, fc2_bias) * step_size;
+
+                    if(density > 0.0f)
+                    {
+                        const float3 light_march = sample_light(cos_angle, height_percent, density);
+                        total_light += density * transmittance * light_march;
+                        transmittance *= exp(-density * _cloud_attenuation);
+                    
+                        if (transmittance < 0.01f) break;
+                        if (transmittance > 1.0f)  break;
+                    }
                     
                     dist_travelled += step_size;
                 }
 
                 // Combining outputs
                 const float3 background_color = tex2D(_MainTex, i.uv).rgb;
-                const float3 final_color = background_color * exp(-total_density);
+                const float3 cloud_colour = total_light * _LightColor0.rgb;
+                const float3 final_color = background_color * transmittance + cloud_colour;
                 return float4(final_color, 1.0f);
             }
             ENDCG
