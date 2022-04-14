@@ -14,6 +14,8 @@ public class RenderImage : MonoBehaviour
     [SerializeField] public Texture2D weatherTexture2D;
     [SerializeField] public TextAsset weights;
 
+    [SerializeField] public new Collider collider;
+    
     private Vector3 m_Fc1Weights1;
     private Vector3 m_Fc1Weights2;
     private Vector3 m_Fc1Weights3;
@@ -21,6 +23,8 @@ public class RenderImage : MonoBehaviour
     private Vector3 m_Fc2Weights;
     private float m_Fc2Bias;
 
+    private Bounds m_Bounds;
+    
     private void Start()
     {
         // Presuming there is only 1 camera and that is the main camera, set the depth buffers
@@ -31,7 +35,7 @@ public class RenderImage : MonoBehaviour
         {
             material = new Material(shader);
         }
-        
+
         ParseWeights();
 
         // Send neural network weights to the shader
@@ -90,10 +94,14 @@ public class RenderImage : MonoBehaviour
         // Get boxes position and scale
         var position = box.position;
         var localScale = box.localScale;
+
+        
+        m_Bounds = collider.bounds;
+
         
         // Send box bounds to the shader
-        material.SetVector("_BoundsMin", position - localScale / 2);
-        material.SetVector("_BoundsMax", position + localScale / 2);
+        material.SetVector("_BoundsMin", m_Bounds.min); //position - localScale / 2);
+        material.SetVector("_BoundsMax", m_Bounds.max); //position + localScale / 2);
         
         // Send textures to the shader
         material.SetTexture("Shape_tex", shapeTexture3D);

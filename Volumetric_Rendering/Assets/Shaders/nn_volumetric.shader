@@ -120,20 +120,25 @@ Shader "Custom/nn_volumetric"
             
             float sample_density_from_nn(float3 inputs, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
             {
-                float neuron_1 = dot(inputs, clamp(fc1_weights_1, MIN, MAX));
-                float neuron_2 = dot(inputs, clamp(fc1_weights_2, MIN, MAX));
-                float neuron_3 = dot(inputs, clamp(fc1_weights_3, MIN, MAX));
-
-                const float3 hidden_layer = sigmoid(float3(neuron_1, neuron_2, neuron_3));
-                const float output = sigmoid(dot(hidden_layer, clamp(fc2_weights, MIN, MAX)));
+                float neuron_1 = dot(inputs, fc1_weights_1);
+                float neuron_2 = dot(inputs, fc1_weights_2);
+                float neuron_3 = dot(inputs, fc1_weights_3);
+                
+                const float3 hidden_layer = sigmoid(float3(neuron_1, neuron_2, neuron_3) + fc1_bias);
+                const float output = sigmoid(dot(hidden_layer, fc2_weights) + fc2_bias);
+                if (inputs.x > 0.0f) return 0.0f;
                 return output;
             }
 
             float sample_density(float3 position, const float height_percent, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
             {
                 // Create uvw using the sample position and the scale and offset of the cloud texture
-                const float3 uvw = position * _CloudScale * 0.001f + _CloudOffset * 0.01f;
-
+                const float3 uvw = position;// * _CloudScale * 0.001f + _CloudOffset * 0.01f;
+                
+                float4 local_position = mul(UNITY_MATRIX_IT_MV, float4(position, 1.0f));
+                
+                
+                
                 // Sample the weather map
                 const float4 weather_map        = Weather_tex.SampleLevel(samplerWeather_tex, position.xz / _mapScale, 0.0f);
                 const float weather_map_control = normalize_weather_map(weather_map, _globalCoverage);
@@ -144,7 +149,7 @@ Shader "Custom/nn_volumetric"
                 // Alter the cloud's density using a altering density height Function
                 const float density_altering = alter_density_height(height_percent, weather_map, _globalCoverage);
 
-                float density = sample_density_from_nn(uvw, fc1_weights_1, fc1_weights_2, fc1_weights_3, fc1_bias, fc2_weights, fc2_bias);
+                float density = sample_density_from_nn(local_position.xyz, fc1_weights_1, fc1_weights_2, fc1_weights_3, fc1_bias, fc2_weights, fc2_bias);
 
                 // Create the base cloud shape
                 const float SNsample = remap(density, density - MAX, MAX, MIN, MAX);
