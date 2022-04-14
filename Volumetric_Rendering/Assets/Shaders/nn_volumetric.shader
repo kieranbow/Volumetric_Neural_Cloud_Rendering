@@ -100,20 +100,13 @@ Shader "Custom/nn_volumetric"
             float _in_scattering, _out_scattering, _in_out_scattering, _silver_line_intensity, _silver_line_exp;
             float _cloud_beer, _density_to_sun, _cloud_attenuation, _out_scattering_ambient, _param;
             int _NumStep;
-
-            // fc1 weights
-            float3 fc1_weights_1 = {0.37478527426719666, 0.2376808226108551, -0.01765313185751438};
-            float3 fc1_weights_2 = {-0.5573139190673828, -0.3534366190433502, 0.026250552386045456};
-            float3 fc1_weights_3 = {0.08791234344244003, -0.016565363854169846, -0.019348561763763428};
-
-            // fc1 bias
-            float3 fc1_bias = {0.47507452964782715, 0.5249373912811279, -0.07115606218576431};
-
-            // fc2 weights
-            float3 fc2_weights = {0.5833595991134644, 0.3923006057739258, -0.002055155811831355};
             
-            // fc2 bias
-            float fc2_bias = 0.5169274806976318f;
+            float3 fc1_weights_1;
+            float3 fc1_weights_2;
+            float3 fc1_weights_3;
+            float3 fc1_bias;
+            float3 fc2_weights;
+            float fc2_bias;
             
             float relu(float x)
             {
@@ -127,21 +120,13 @@ Shader "Custom/nn_volumetric"
             
             float sample_density_from_nn(float3 inputs, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
             {
-                float neuron_1 = sigmoid(dot(inputs, fc1_weights_1) + fc1_bias);
-                float neuron_2 = sigmoid(dot(inputs, fc1_weights_2) + fc1_bias);
-                float neuron_3 = sigmoid(dot(inputs, fc1_weights_3) + fc1_bias);
-                
-                return sigmoid(dot(float3(neuron_1, neuron_2, neuron_3), fc2_weights) + fc2_bias);
-                
-                // float neuron = 0.0f;
-                // for (int column = 0; column < 3; column++)
-                // {
-                //     for (int row = 0; row < 3; row++)
-                //     {
-                //         neuron += dot(position[row], weights[row][column]);
-                //     }
-                // }
-                // return sigmoid(neuron);
+                float neuron_1 = dot(inputs, clamp(fc1_weights_1, MIN, MAX));
+                float neuron_2 = dot(inputs, clamp(fc1_weights_2, MIN, MAX));
+                float neuron_3 = dot(inputs, clamp(fc1_weights_3, MIN, MAX));
+
+                const float3 hidden_layer = sigmoid(float3(neuron_1, neuron_2, neuron_3));
+                const float output = sigmoid(dot(hidden_layer, clamp(fc2_weights, MIN, MAX)));
+                return output;
             }
 
             float sample_density(float3 position, const float height_percent, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
@@ -172,27 +157,26 @@ Shader "Custom/nn_volumetric"
             float3 sample_light(float cos_angle, float height_percentage, float density)
             {
                 // Attenuation
-                float primary = exp(-_cloud_beer * _density_to_sun);
+                float primary   = exp(-_cloud_beer * _density_to_sun);
                 float secondary = exp(-_cloud_beer * _cloud_attenuation) * 0.7f;
-                float check = remap(cos_angle, MIN, MAX, secondary, secondary * 0.5f);
+                float check     = remap(cos_angle, MIN, MAX, secondary, secondary * 0.5f);
                 float attenuation_prob = max(check, primary);
                 
                 // Ambient Out scattering
-                float depth = _out_scattering_ambient * pow(density, remap(height_percentage, 0.3f, 0.9f, 0.5f, MAX));
-                float vertical = pow(saturate(remap(height_percentage, MIN, 0.3f, 0.8f, 1.0f)), 0.8f);
-                float out_scatter = depth * vertical;
-                out_scatter = 1.0 - saturate(out_scatter);
+                float depth         = _out_scattering_ambient * pow(density, remap(height_percentage, 0.3f, 0.9f, 0.5f, MAX));
+                float vertical      = pow(saturate(remap(height_percentage, MIN, 0.3f, 0.8f, 1.0f)), 0.8f);
+                float out_scatter   = depth * vertical;
+                out_scatter         = 1.0 - saturate(out_scatter);
                 float ambient_out_scattering = out_scatter;
 
                 // In out scattering
-                float hg1 = henyey_Greenstein(cos_angle, _in_scattering);
-                float hg2 = _silver_line_intensity * pow(saturate(cos_angle), _silver_line_exp);
-                float hg_inscattering = max(hg1, hg2);
-                float hg_outscattering = henyey_Greenstein(cos_angle, -_out_scattering);
-                float inoutscattering = lerp(hg_inscattering, hg_outscattering, _in_out_scattering);
-                float sun_highlight = inoutscattering;
-
-                float attenuation = attenuation_prob * sun_highlight * ambient_out_scattering;
+                float hg1               = henyey_Greenstein(cos_angle, _in_scattering);
+                float hg2               = _silver_line_intensity * pow(saturate(cos_angle), _silver_line_exp);
+                float hg_inscattering   = max(hg1, hg2);
+                float hg_outscattering  = henyey_Greenstein(cos_angle, -_out_scattering);
+                float inoutscattering   = lerp(hg_inscattering, hg_outscattering, _in_out_scattering);
+                float sun_highlight     = inoutscattering;
+                float attenuation       = attenuation_prob * sun_highlight * ambient_out_scattering;
                 
                 return attenuation;
             }
