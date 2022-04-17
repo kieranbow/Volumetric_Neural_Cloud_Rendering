@@ -21,8 +21,8 @@ float4 blend_under(float4 color, const float4 new_color)
 
 float henyey_Greenstein(const float cos_theta, const float g)
 {
-    // const float g2 = g * g;
-    return ((1.0f - g * g) / pow(1.0f + g * g - 2.0f * (g * g) * cos_theta, 1.5)) / 4.0f * pi;
+    const float g2 = g * g;
+    return ((1.0f - g2) / pow(1.0f + g2 - 2.0f * g2 * cos_theta, 1.5)) / 4.0f * pi;
 }
 
 float beer_law(const float density)
@@ -75,17 +75,17 @@ float calculate_height_gradient(float height_percentage)
             saturate(remap(height_percentage, MAX, GMAX, MIN, MAX));
 }
 
-float get_coverage(float4 weather_map)
+float get_low_coverage(float4 weather_map)
 {
     return weather_map.r;
 }
 
-float get_cloud_type(float4 weather_map)
+float get_high_coverage(float4 weather_map)
 {
     return weather_map.g;
 }
 
-float get_precipitation(float4 weather_map)
+float get_cloud_peaks(float4 weather_map)
 {
     return weather_map.b;
 }
@@ -114,13 +114,13 @@ float density_gradient_height(float height, float cloud_type)
 
 float normalize_weather_map(const float4 weather_map, const float global_coverage)
 {
-    return max(get_coverage(weather_map), saturate(global_coverage - 0.5f) * get_cloud_type(weather_map) * 2.0f);
+    return max(get_low_coverage(weather_map), saturate(global_coverage - 0.5f) * get_high_coverage(weather_map) * 2.0f);
 }
 
 float alter_shape_height(const float height_percent, const float4 weather_map)
 {
     const float bottom_round_clouds = saturate(remap(height_percent, MIN, 0.07f, MIN, MAX));
-    const float top_round_clouds = saturate(remap(height_percent, get_precipitation(weather_map) * 0.2f, weather_map.b, MAX, MIN));
+    const float top_round_clouds = saturate(remap(height_percent, get_cloud_peaks(weather_map) * 0.2f, get_cloud_peaks(weather_map), MAX, MIN));
     return bottom_round_clouds * top_round_clouds;
 }
 
@@ -136,4 +136,54 @@ float generate_base_shape(float4 shape)
     float base_shape = generate_fbm(shape);
     base_shape = -(1.0f - base_shape);
     return remap(shape.r, base_shape, MAX, MIN, MAX);
+}
+
+float light_attenuation(float density_to_sun, float cos_theta, float beer_amount, float atten_clamp)
+{
+    float primary_atten = exp(-beer_amount * density_to_sun);
+    float second_atten = exp(-beer_amount * atten_clamp);
+
+    // Reduces the attenuation clamp when facing the sun
+    float reduce_clamp = remap(cos_theta, MIN, MAX, second_atten, second_atten * 0.5f);
+
+    return max(reduce_clamp, primary_atten);
+}
+
+float phase(float cos_theta)
+{
+    float hg = henyey_Greenstein(cos_theta, 0.83f) * 0.5f + henyey_Greenstein(cos_theta, -0.3f) * 0.5f;
+    return 0.8f + hg * 0.15f;
+}
+
+float scattering(const float cos_theta, const float in_scattering, const float out_scattering, const float ins_intensity, const float ins_exp, const float bias)
+{
+    // Creates the in-scattering effect using henyey_greenstein
+    const float hg1 = henyey_Greenstein(cos_theta, in_scattering);
+
+    // x = 0.83f
+    // y = 0.3f
+    // z = 0.8f
+    // factor = 0.015f
+
+    // Extra intensity to in-scattering
+    const float hg2 = ins_intensity * pow(saturate(cos_theta), ins_exp);
+
+    // Selects between the two in-scattering effects
+    const float in_scattering_hg = max(hg1, hg2);
+
+    // Creates out-scattering effect using henyey_Greenstein
+    const float out_scattering_hg = henyey_Greenstein(cos_theta, -out_scattering);
+
+    // Return the amount of scattering based of a bias
+    return lerp(in_scattering_hg, out_scattering_hg, bias);
+}
+
+// Adds a non-physically based ambient occlusion to the clouds to create contours and to prevent
+// white blowouts due to the high changes that the first step towards the sun will be outside the
+// volumetric box
+float out_scattering_ao(const float height_percentage, const float density, const float osa)
+{
+    const float a = saturate(osa * pow(density, remap(height_percentage, 0.3f, 0.9f, 0.5f, 1.0f)));
+    const float b = saturate(pow(remap(height_percentage, MIN, 0.3f, 0.8f, 1.0f), 0.8f));
+    return MAX - a * b;
 }

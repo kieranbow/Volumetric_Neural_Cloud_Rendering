@@ -120,14 +120,37 @@ Shader "Custom/nn_volumetric"
             
             float sample_density_from_nn(float3 inputs, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
             {
-                float neuron_1 = dot(inputs, fc1_weights_1);
-                float neuron_2 = dot(inputs, fc1_weights_2);
-                float neuron_3 = dot(inputs, fc1_weights_3);
+                float neuron_1 = relu(dot(inputs, fc1_weights_1) + fc1_bias.x);
+                float neuron_2 = relu(dot(inputs, fc1_weights_2) + fc1_bias.y);
+                float neuron_3 = relu(dot(inputs, fc1_weights_3) + fc1_bias.z);
                 
-                const float3 hidden_layer = sigmoid(float3(neuron_1, neuron_2, neuron_3) + fc1_bias);
-                const float output = sigmoid(dot(hidden_layer, fc2_weights) + fc2_bias);
-                if (inputs.x > 0.0f) return 0.0f;
+                const float3 hidden_layer = float3(neuron_1, neuron_2, neuron_3);
+                const float output = relu(dot(hidden_layer, fc2_weights) + fc2_bias);
+                if (inputs.y < 0.5f) return 0.0f;
                 return output;
+            }
+
+            void test(float inputs[3], float weights[15], float bias[4])
+            {
+                float neuron[3];
+                // Loop through every hidden layer
+                for (int nl = 0; nl < 1; nl++)
+                {
+                    // Loop through every neuron in that hidden layer
+                    for (int n = 0; n < 3; n++)
+                    {
+                        int w = 0;
+                        int b = 0;
+
+                        for (int i = 0; i < 3; i++)
+                        {
+                            neuron[n] += weights[w] * inputs[i] + bias[b];
+                            w++;
+                            b++;
+                        }
+                        neuron[n] = sigmoid(neuron[n]);
+                    }
+                }
             }
 
             float sample_density(float3 position, const float height_percent, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)

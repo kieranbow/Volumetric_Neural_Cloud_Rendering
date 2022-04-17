@@ -37,3 +37,19 @@ float3 ray_sphere(const float3 pos, const float radius, const Ray ray, const flo
 
 	return intersect;
 }
+
+float2 ray_sphere(const Ray ray, float3 origin, const float radius)
+{
+	// https://www.youtube.com/watch?v=OCZTVpfMSys
+	float t = dot(origin - ray.origin, ray.direction);
+	float3 p = ray.origin + ray.direction * t;
+	float y = length(origin - p);
+
+	if (y > radius) return false;
+
+	float x = sqrt(radius * radius - y * y);
+	float t0 = max(t - x, 0.0f);
+	float t1 = t + x;
+
+	return float2(t0, t1);
+} 

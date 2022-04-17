@@ -51,8 +51,6 @@ testing_data    = CSVdataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Vo
 #      print(i, sample['x'], sample['y'], sample['z'], sample['density'])
 # =============================================================================
 #%%
-batch_size = 1
-
 class AI(nn.Module):
      def __init__(self):
          super().__init__()
@@ -62,13 +60,15 @@ class AI(nn.Module):
          hiddenLayer_size = 3
          
          self.fc1 = nn.Linear(input_size, hiddenLayer_size)
-         self.fc2 = nn.Linear(hiddenLayer_size, output_size)
+         self.fc2 = nn.Linear(hiddenLayer_size, 2)
+         self.fc3 = nn.Linear(2, output_size)
          
      def forward(self, x):
-         #x = F.relu(self.fc1(x))
-         #x = F.relu(self.fc2(x))
-         x = torch.sigmoid(self.fc1(x))
-         x = torch.sigmoid(self.fc1(x))
+         x = F.relu(self.fc1(x))
+         x = F.relu(self.fc2(x))
+         x = F.relu(self.fc3(x))
+         #x = torch.sigmoid(self.fc1(x))
+         #x = torch.sigmoid(self.fc2(x))
          return x
  
 model = AI()
@@ -96,6 +96,11 @@ def sampleFromDataset(data, sample, output_ref):
     sample[0]       = data[idx]['x']
     sample[1]       = data[idx]['y']
     sample[2]       = data[idx]['z']
+    
+    #sample[3]       = pow(data[idx]['x'], 2)
+    #sample[4]       = pow(data[idx]['y'], 2)
+    #sample[5]       = pow(data[idx]['z'], 2)
+    
     output_ref[0]   = data[idx]['density']
     
     return sample, output_ref
@@ -106,13 +111,13 @@ print(sampleFromDataset(training_data, sample, output))
 #%%
 print('Training model')
 
-num_epochs = 25000
+num_epochs = 20000
 
 for i in range(num_epochs):
     sampleFromDataset(training_data, sample, output)
     pred = model(torch.autograd.Variable(torch.FloatTensor(sample)))
     loss = loss_func(pred, torch.autograd.Variable(torch.FloatTensor(output)))
-    #print(i, loss.item())
+    print(i, loss.item())
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()

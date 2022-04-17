@@ -16,22 +16,21 @@ Shader "Custom/Volumetric_clouds"
         
         [Header(Cloud Density)]
         [Space(10)]
-        _DensityThreshold ("Density Threshold", Range(0, 1)) = 0.5
         _DensityMulti ("Density Multiplier", Range(0, 10)) = 5.0
         
-        [Header(Cloud appearance)]
+        [Header(Light Scattering)]
+        [Space(10)]
+        _in_scattering ("In Scattering", Range(0, 1)) = 0.0
+        _out_scattering ("Out Scattering", Range(0, 1)) = 1.0
+        _in_scattering_intensity ("In scattering Intensity", Range(0, 1)) = 1.0
+        _in_scattering_exp ("In scattering Exponent", Range(0, 20)) = 0.0
+        _io_bias ("In-Out Scattering bias", Range(0, 1)) = 0.3
+        _out_scattering_ambient ("Out-Scattering ao", Range(0, 1)) = 0.5
+        
+        [Header(Cloud Appearance)]
         [Space(10)]
         _globalCoverage ("Cloud coverage", Range(0, 1)) = 0.5
-        _in_scattering ("In Scattering", Range(0, 1)) = 0.0
-        _out_scattering ("Out Scattering", Range(0, 1)) = 0.0
-        _in_out_scattering ("In Out Scattering bias", Range(0, 1)) = 0.0
-        _silver_line_intensity ("Silver Lining Intensity", Range(0, 1)) = 0.0
-        _silver_line_exp ("Silver Lining Exponent", Range(0, 1)) = 0.0
-        _cloud_beer ("Beer amount", Range(0, 1)) = 0.0
-        _density_to_sun ("Density to sun", Range(0, 10)) = 0.0
         _cloud_attenuation ("Attenuation", Range(0, 1)) = 0.0
-        _out_scattering_ambient ("Outscattering ambients", Range(0, 1)) = 0.0
-        _param ("Cloud brightness", Range(0, 1)) = 0.5
         
         [Header(Weather Map)]
         [Space(10)]
@@ -73,6 +72,7 @@ Shader "Custom/Volumetric_clouds"
                 float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
                 float3 view_vector : TEXCOORD1;
+                float4 screenPos  : TEXCOORD2;
             };
 
             // -----------------------------------------------------
@@ -85,7 +85,9 @@ Shader "Custom/Volumetric_clouds"
 
                 float3 view_vector = mul(unity_CameraInvProjection, float4(v.uv * 2.0f - 1.0f, 0.0f, -1.0f));
                 o.view_vector = mul(unity_CameraToWorld, float4(view_vector, 0.0f));
-
+                o.screenPos = ComputeScreenPos(o.vertex);
+                
+                
                 return o;
             }
 
@@ -98,17 +100,19 @@ Shader "Custom/Volumetric_clouds"
             Texture3D<float4> Shape_tex;
             Texture3D<float4> Noise_tex;
             Texture2D<float4> Weather_tex;
+            Texture2D<float4> blueNoise_tex;
             
             // Sample States
             SamplerState samplerShape_tex;
             SamplerState samplerNoise_tex;
             SamplerState samplerWeather_tex;
+            SamplerState samplerblueNoise_tex;
 
             float4 _CloudOffset, _DetailOffset;
             float3 _BoundsMin, _BoundsMax;
-            float _CloudScale, _DensityThreshold, _DensityMulti, _mapScale, _globalCoverage, _DetailScale;
-            float _in_scattering, _out_scattering, _in_out_scattering, _silver_line_intensity, _silver_line_exp;
-            float _cloud_beer, _density_to_sun, _cloud_attenuation, _out_scattering_ambient, _param;
+            float _CloudScale, _DensityMulti, _mapScale, _globalCoverage, _DetailScale;
+            float _in_scattering, _out_scattering, _in_scattering_intensity, _in_scattering_exp, _io_bias;
+            float _cloud_attenuation, _out_scattering_ambient;
             int _NumStep;
             
             float sample_density(float3 position, const float height_percent)
@@ -131,7 +135,7 @@ Shader "Custom/Volumetric_clouds"
                 
                 // Create the base cloud shape
                 const float SNsample = remap(shape_noise.r, generate_fbm(shape_noise) - MAX, MAX, MIN, MAX);
-                const float SN  = saturate(remap(SNsample * shape_altering, MAX - _globalCoverage * weather_map_control, MAX, MIN, MAX)) * shape_altering; // density_altering
+                const float SN  = saturate(remap(SNsample * shape_altering, MAX - _globalCoverage * weather_map_control, MAX, MIN, MAX)) * density_altering;
 
                 // Create the detail noise shape
                 if (SN > MIN)
@@ -139,7 +143,7 @@ Shader "Custom/Volumetric_clouds"
                     const float3 detail_uvw     = position * _DetailScale * 0.001f + _DetailOffset * 0.01f;
                     const float4 detail_noise   = Noise_tex.SampleLevel(samplerNoise_tex, detail_uvw, MIP_LEVEL);
                     
-                    const float detail_noise_fbm = generate_fbm(detail_noise);
+                    const float detail_noise_fbm = detail_noise.r * 0.625f + detail_noise.g * 0.25f + detail_noise.b * 0.125f; //generate_fbm(detail_noise);
                     const float e = -(_globalCoverage * 0.75f);
                     const float detail_noise_mod = 0.35f * e * lerp(detail_noise_fbm, MAX - detail_noise_fbm, saturate(height_percent * 5.0f));
                     const float density = saturate(remap(SN, detail_noise_mod, MAX, MIN, MAX)) * density_altering;
@@ -148,44 +152,30 @@ Shader "Custom/Volumetric_clouds"
                 return 0;
             }
 
-            float3 sample_light(float cos_angle, float height_percentage, float density)
+            float sample_light(const float cos_theta, const float height_percentage, const float density)
             {
-                // Attenuation
-                float primary = exp(-_cloud_beer * _density_to_sun);
-                float secondary = exp(-_cloud_beer * _cloud_attenuation) * 0.7f;
-                float check = remap(cos_angle, MIN, MAX, secondary, secondary * 0.5f);
-                float attenuation_prob = max(check, primary);
+                // Lights attenuation inside the cloud
+                const float attenuation = light_attenuation(density, cos_theta, 0.0f, _cloud_attenuation);
                 
-                // Ambient Out scattering
-                float depth = _out_scattering_ambient * pow(density, remap(height_percentage, 0.3f, 0.9f, 0.5f, MAX));
-                float vertical = pow(saturate(remap(height_percentage, MIN, 0.3f, 0.8f, 1.0f)), 0.8f);
-                float out_scatter = depth * vertical;
-                out_scatter = 1.0 - saturate(out_scatter);
-                float ambient_out_scattering = out_scatter;
-
                 // In out scattering
-                float hg1 = henyey_Greenstein(cos_angle, _in_scattering);
-                float hg2 = _silver_line_intensity * pow(saturate(cos_angle), _silver_line_exp);
-                float hg_inscattering = max(hg1, hg2);
-                float hg_outscattering = henyey_Greenstein(cos_angle, -_out_scattering);
-                float inoutscattering = lerp(hg_inscattering, hg_outscattering, _in_out_scattering);
-                float sun_highlight = inoutscattering;
-
-                float attenuation = attenuation_prob * sun_highlight * ambient_out_scattering;
+                const float io_scattering = scattering(cos_theta, _in_scattering, _out_scattering, _in_scattering_intensity, _in_scattering_exp, _io_bias);
                 
-                return attenuation;
+                // Out-Scattering ambient occlusion
+                const float o_scattering_ao = out_scattering_ao(height_percentage, density, _out_scattering_ambient);
+                
+                return attenuation * io_scattering * o_scattering_ao;// * phase(cos_theta);
             }
 
             // -----------------------------------------------------
             // Pixel Shader
             fixed4 frag (const v2f i) : SV_Target
             {
-                // Primary camera ray
+                // Create a primary camera ray
                 Ray primary_ray;
                 primary_ray.origin = _WorldSpaceCameraPos;
                 primary_ray.direction = normalize(i.view_vector);
                 
-                // Depth texture
+                // Get the depth texture
                 const float non_linear_depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
                 const float z_depth = LinearEyeDepth(non_linear_depth) * length(i.view_vector);
                 
@@ -195,48 +185,49 @@ Shader "Custom/Volumetric_clouds"
                 box.center = (_BoundsMin + _BoundsMax) * 0.5f;
                 box.bound_max = _BoundsMax;
                 box.bound_min = _BoundsMin;
+
+                // Sample blue noise to create random offset
+                const float blueNoise = blueNoise_tex.SampleLevel(samplerblueNoise_tex, i.screenPos.xy, MIP_LEVEL);
                 
                 // Ray box intersection
                 const float2 ray_box = ray_box_dist(box.bound_min, box.bound_max, primary_ray);
-                const float dist_to_box = ray_box.x;
+                const float dist_to_box = (blueNoise - 0.5f) + ray_box.x;
                 const float dist_inside_box = ray_box.y;
+                
+                const float step_size = dist_inside_box / _NumStep;
+                const float dist_limit = min(z_depth - dist_to_box, dist_inside_box);
 
                 // Ray entry point
                 const float3 entry_point = primary_ray.origin + primary_ray.direction * dist_to_box;
 
-                float dist_travelled = 0.0f;
-                const float step_size = dist_inside_box / _NumStep;
-                const float dist_limit = min(z_depth - dist_to_box, dist_inside_box);
-
-                // Cloud lighting
-                float cos_angle = dot(primary_ray.direction, _WorldSpaceLightPos0.xyz);
-
                 float transmittance = 1.0f;
                 float3 total_light = float3(0.0f, 0.0f, 0.0f);
-
-                float phase = 0.8f + (henyey_Greenstein(cos_angle, 0.85f) * 0.5f + henyey_Greenstein(cos_angle, -0.3f) * 0.5f) * 0.15f;
+                float t = 0.0f;
                 
-                while (dist_travelled < dist_limit)
+                while (t < dist_limit)
                 {
                     // Sample position along the view direction
-                    const float3 sample_position = entry_point + primary_ray.direction * dist_travelled;
+                    const float3 sample_position = entry_point + primary_ray.direction * t;
                     
                     // Height Percentage
                     const float height_percent = calculate_height_percentage(sample_position, box.bound_min, box.size);
                     
-                    // Sample density
-                    float density = sample_density(sample_position, height_percent) * step_size;
+                    // Sample the density at each point
+                    const float density = sample_density(sample_position, height_percent) * step_size;
 
+                    // Only add lighting if the density is greater than 0
                     if(density > 0.0f)
                     {
-                        float3 light_march = sample_light(cos_angle, height_percent, density);
-                        total_light += density * transmittance * light_march;
-                        transmittance *= exp(-density * _cloud_attenuation);
-                    
-                        if (transmittance < 0.01f) break;
-                        if (transmittance > 1.0f)  break;
+                        // Here cos theta is the angle between the ray direction and light direction
+                        const float cos_theta = dot(primary_ray.direction, _WorldSpaceLightPos0.xyz);
+
+                        // Sample the light
+                        const float light = sample_light(cos_theta, height_percent, density);
+                        total_light += density * step_size * transmittance * light;
+                        transmittance *= exp(-density * step_size * _cloud_attenuation);
+                        if (transmittance < 0.01f || transmittance > 1.0f) break;
                     }
-                    dist_travelled += step_size;
+                    t += step_size;
                 }
 
                 // Combining outputs
