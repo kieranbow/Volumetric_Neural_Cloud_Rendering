@@ -3,10 +3,11 @@ Shader "Custom/Volumetric_clouds"
     Properties
     {
         [HideInInspector] _MainTex ("Texture", 2D) = "white" {}
+        [HideInInspector] _cloudsTex ("Cloud texture", 2D) = "white" {}
         
         [Header(Base Shape)]
         [Space(10)]
-        _CloudScale ("Cloud Scale", Range(1.0, 100.0)) = 10.0
+        _CloudScale ("Cloud Scale", Range(1.0, 1000.0)) = 10.0
         _CloudOffset ("Cloud Offset", Vector) = (0,0,0,0)
         
         [Header(Shape Detail)]
@@ -42,8 +43,12 @@ Shader "Custom/Volumetric_clouds"
     }
     SubShader
     {
-        Cull Off ZWrite Off ZTest Always // No culling or depth
+        // No culling or depth
+        Cull Off 
+        ZWrite Off 
+        ZTest Always 
 
+        // This pass will render the clouds
         Pass
         {
             CGPROGRAM
@@ -163,7 +168,7 @@ Shader "Custom/Volumetric_clouds"
                 // Out-Scattering ambient occlusion
                 const float o_scattering_ao = out_scattering_ao(height_percentage, density, _out_scattering_ambient);
                 
-                return attenuation * io_scattering * o_scattering_ao;// * phase(cos_theta);
+                return attenuation * io_scattering * o_scattering_ao;
             }
 
             // -----------------------------------------------------
@@ -203,7 +208,7 @@ Shader "Custom/Volumetric_clouds"
                 float transmittance = 1.0f;
                 float3 total_light = float3(0.0f, 0.0f, 0.0f);
                 float t = 0.0f;
-                
+
                 while (t < dist_limit)
                 {
                     // Sample position along the view direction
@@ -233,9 +238,60 @@ Shader "Custom/Volumetric_clouds"
                 // Combining outputs
                 const float3 background_color = tex2D(_MainTex, i.uv).rgb;
                 const float3 cloud_color = total_light * _LightColor0.rgb;
-                const float3 final_color = background_color * transmittance + cloud_color;
+                const float3 final_color = /*background_color **/ 0.0f * transmittance + cloud_color;
                 return float4(final_color, 1.0f);
             }
+            ENDCG
+        }
+        
+        // This pass combines the rendered clouds with a render from the camera
+        Pass 
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            // Includes
+            #include "UnityCG.cginc"
+
+            struct appdata
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+                float3 view_vector : TEXCOORD1;
+                float4 screenPos  : TEXCOORD2;
+            };
+
+            v2f vert (const appdata v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+
+                float3 view_vector = mul(unity_CameraInvProjection, float4(v.uv * 2.0f - 1.0f, 0.0f, -1.0f));
+                o.view_vector = mul(unity_CameraToWorld, float4(view_vector, 0.0f));
+                o.screenPos = ComputeScreenPos(o.vertex);
+
+                return o;
+            }
+
+            sampler2D _MainTex, _cloudsTex;
+
+            fixed4 frag (const v2f i) : SV_Target
+            {
+                // Combining outputs
+                const float3 background_color = tex2D(_MainTex, i.uv).rgb;
+                const float cloud_colour = tex2D(_cloudsTex, i.uv).r;
+
+                return float4(background_color + (cloud_colour), 1.0f);
+            }
+            
             ENDCG
         }
     }

@@ -7,9 +7,9 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: M_VolumeTest
-  m_Shader: {fileID: 4800000, guid: a41fbe2f3adeed7479120603956d4c99, type: 3}
-  m_ShaderKeywords: 
+  m_Name: M_sky
+  m_Shader: {fileID: 106, guid: 0000000000000000f000000000000000, type: 0}
+  m_ShaderKeywords: _SUNDISK_SIMPLE
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -55,68 +55,32 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _VolumeTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _cloudsTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _weatherTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Alpha: 0.2
+    - _AtmosphereThickness: 1
     - _BumpScale: 1
-    - _CloudAmp: 1
-    - _CloudFreq: 1
-    - _CloudOffset: 0.1
-    - _CloudScale: 66
-    - _Coverage: 0.5
     - _Cutoff: 0.5
-    - _DensityMulti: 1
-    - _DensityThreshold: 0
     - _DetailNormalMapScale: 1
-    - _DetailScale: 155
     - _DstBlend: 0
+    - _Exposure: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
     - _Metallic: 0
     - _Mode: 0
-    - _NumStep: 100
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _StepSize: 0.06
+    - _SunDisk: 1
+    - _SunSize: 0.034
+    - _SunSizeConvergence: 4.22
     - _UVSec: 0
     - _ZWrite: 1
-    - _cloud_attenuation: 0.4
-    - _cloud_beer: 0
-    - _cloudtype: 1
-    - _coverage: 1
-    - _density_to_sun: 6.03
-    - _globalCoverage: 1
-    - _in_out_scattering: 0.3
-    - _in_scattering: 0
-    - _in_scattering_exp: 5.9
-    - _in_scattering_intensity: 1
-    - _io_bias: 0.5
-    - _mapScale: 1000
-    - _out_scattering: 1
-    - _out_scattering_ambient: 0.5
-    - _param: 0.5
-    - _silver_line_exp: 0
-    - _silver_line_intensity: 0
-    - _test: -1.6
     m_Colors:
-    - _CloudOffset: {r: 42.22, g: 2.97, b: 2.52, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _DetailOffset: {r: 17.46, g: -19.92, b: 5.28, a: 0}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _GroundColor: {r: 0, g: 0, b: 0, a: 1}
+    - _SkyTint: {r: 0.5, g: 0.5, b: 0.5, a: 1}
   m_BuildTextureStacks: []

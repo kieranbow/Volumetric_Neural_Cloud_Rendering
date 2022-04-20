@@ -1,0 +1,5 @@
+float sample_from_weights(float3 position)
+{
+	 float pos[3] = { position.x, position.y, position.z };
+	 float layer_1_nodes[3];
+	 float layer_2_nodes[3];

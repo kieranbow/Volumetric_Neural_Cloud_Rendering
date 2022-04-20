@@ -9,6 +9,7 @@ public class RenderImage : MonoBehaviour
     [Header("Rendering")]
     [SerializeField] public Material material;
     [SerializeField] public Shader shader;
+    public bool enableTwoPassRendering = true;
     
     [Header("Volumetric Container")]
     [SerializeField] public Collider collider;
@@ -21,7 +22,7 @@ public class RenderImage : MonoBehaviour
     
     [Header("Neural Network weights")]
     [SerializeField] public TextAsset weights;
-    
+
     private Vector3 m_Fc1Weights1;
     private Vector3 m_Fc1Weights2;
     private Vector3 m_Fc1Weights3;
@@ -37,7 +38,10 @@ public class RenderImage : MonoBehaviour
         
         if (material == null)
         {
-            material = new Material(shader);
+            material = new Material(shader)
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
         }
 
         ParseWeights();
@@ -92,21 +96,45 @@ public class RenderImage : MonoBehaviour
     {
         if (material == null)
         {
-            material = new Material(shader);
+            material = new Material(shader)
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
         }
         
         Bounds bounds = collider.bounds;
-        
+
         // Send box bounds to the shader
         material.SetVector("_BoundsMin", bounds.min);
         material.SetVector("_BoundsMax", bounds.max);
+
+        if (enableTwoPassRendering)
+        {
+            // Send textures to the shader
+            material.SetTexture("Shape_tex", shapeTexture3D);
+            material.SetTexture("Noise_tex", detailTexture3D);
+            material.SetTexture("Weather_tex", weatherTexture2D);
+            material.SetTexture("blueNoise_tex", blueNoiseTexture2D);
+
+            // Create a new render texture which will render the clouds at 1/4 of the screen resolution
+            RenderTexture rtClouds = RenderTexture.GetTemporary(source.width / 2, source.height / 2, 0, RenderTextureFormat.R8);
+            rtClouds.useDynamicScale = true;
+            rtClouds.filterMode = FilterMode.Bilinear;
         
-        // Send textures to the shader
-        material.SetTexture("Shape_tex", shapeTexture3D);
-        material.SetTexture("Noise_tex", detailTexture3D);
-        material.SetTexture("Weather_tex", weatherTexture2D);
-        material.SetTexture("blueNoise_tex", blueNoiseTexture2D);
+            // Using pass 0 inside the volumetric shader. Render the clouds at 1/4 resolution
+            Graphics.Blit(source, rtClouds, material, 0);
+
+            // Once the cloud rendering has finished, the next part is to send the render texture back to 
+            // the shader. This will then be combined using the shaders pass 1
+            material.SetTexture("_cloudsTex", rtClouds);
+            Graphics.Blit(source, destination, material, 1);
         
-        Graphics.Blit(source, destination, material);
+            // Release the renderTexture since it does not need to be used anymore. 
+            RenderTexture.ReleaseTemporary(rtClouds); 
+        }
+        else
+        {
+            Graphics.Blit(source, destination, material);
+        }
     }
 }

@@ -647,8 +647,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 839790539}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 21.45, z: 0}
-  m_LocalScale: {x: 100, y: 15, z: 100}
+  m_LocalPosition: {x: 0, y: 28.5, z: 0}
+  m_LocalScale: {x: 100, y: 41.598, z: 100}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 2
@@ -944,13 +944,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: 57f497978455bf44faa4cf3d6f84e2d3, type: 2}
   shader: {fileID: 4800000, guid: 3ee491f2f6296194a81ad04f35548101, type: 3}
-  box: {fileID: 839790543}
+  collider: {fileID: 839790540}
   shapeTexture3D: {fileID: 11700000, guid: 7b0ea2bcaf3467847a965df5b060007e, type: 2}
   detailTexture3D: {fileID: 11700000, guid: f938ef82f2419c546a8989bcaf9b63dc, type: 2}
-  weatherTexture2D: {fileID: 2800000, guid: e64db306d516f0e47abcfa87f6d81926, type: 3}
+  weatherTexture2D: {fileID: 2800000, guid: 489558a2111bf7740b6c2ff2fde5b17c, type: 3}
   blueNoiseTexture2D: {fileID: 2800000, guid: 5bb92e256168a454aa369217d922e1b3, type: 3}
   weights: {fileID: 4900000, guid: a3431ddf28387174a917a08a7a75b15b, type: 3}
-  collider: {fileID: 839790540}
 --- !u!1 &1157529413
 GameObject:
   m_ObjectHideFlags: 0

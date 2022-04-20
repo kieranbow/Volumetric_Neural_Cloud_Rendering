@@ -120,13 +120,13 @@ Shader "Custom/nn_volumetric"
             
             float sample_density_from_nn(float3 inputs, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
             {
-                float neuron_1 = relu(dot(inputs, fc1_weights_1) + fc1_bias.x);
-                float neuron_2 = relu(dot(inputs, fc1_weights_2) + fc1_bias.y);
-                float neuron_3 = relu(dot(inputs, fc1_weights_3) + fc1_bias.z);
+                float neuron_1 = sigmoid(dot(inputs, fc1_weights_1) + fc1_bias.x);
+                float neuron_2 = sigmoid(dot(inputs, fc1_weights_2) + fc1_bias.y);
+                float neuron_3 = sigmoid(dot(inputs, fc1_weights_3) + fc1_bias.z);
                 
                 const float3 hidden_layer = float3(neuron_1, neuron_2, neuron_3);
-                const float output = relu(dot(hidden_layer, fc2_weights) + fc2_bias);
-                if (inputs.y < 0.5f) return 0.0f;
+                const float output = sigmoid(dot(hidden_layer, fc2_weights) + fc2_bias);
+                if (inputs.x > 0.5f) return 0.0f;
                 return output;
             }
 
