@@ -943,13 +943,47 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: 57f497978455bf44faa4cf3d6f84e2d3, type: 2}
-  shader: {fileID: 4800000, guid: 3ee491f2f6296194a81ad04f35548101, type: 3}
+  shader: {fileID: 4800000, guid: a41fbe2f3adeed7479120603956d4c99, type: 3}
+  enableTwoPassRendering: 1
   collider: {fileID: 839790540}
   shapeTexture3D: {fileID: 11700000, guid: 7b0ea2bcaf3467847a965df5b060007e, type: 2}
   detailTexture3D: {fileID: 11700000, guid: f938ef82f2419c546a8989bcaf9b63dc, type: 2}
   weatherTexture2D: {fileID: 2800000, guid: 489558a2111bf7740b6c2ff2fde5b17c, type: 3}
   blueNoiseTexture2D: {fileID: 2800000, guid: 5bb92e256168a454aa369217d922e1b3, type: 3}
   weights: {fileID: 4900000, guid: a3431ddf28387174a917a08a7a75b15b, type: 3}
+  m_Weights:
+  - 0.43682575
+  - -0.11584243
+  - -0.48742884
+  - -0.092639565
+  - 0.11991805
+  - -0.17950577
+  - 0.377913
+  - 0.3903556
+  - 0.45688307
+  - 0.29497826
+  - 0.10813087
+  - 0.31647068
+  - -0.51900345
+  - -0.25216582
+  - 0.108754694
+  - -0.26910233
+  - 0.43682575
+  - -0.11584243
+  - -0.48742884
+  - -0.092639565
+  - 0.11991805
+  - -0.17950577
+  - 0.377913
+  - 0.3903556
+  - 0.45688307
+  - 0.29497826
+  - 0.10813087
+  - 0.31647068
+  - -0.51900345
+  - -0.25216582
+  - 0.108754694
+  - -0.26910233
 --- !u!1 &1157529413
 GameObject:
   m_ObjectHideFlags: 0

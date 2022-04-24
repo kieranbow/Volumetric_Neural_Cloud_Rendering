@@ -32,6 +32,7 @@ Shader "Custom/Volumetric_clouds"
         [Space(10)]
         _globalCoverage ("Cloud coverage", Range(0, 1)) = 0.5
         _cloud_attenuation ("Attenuation", Range(0, 1)) = 0.0
+        _BeerAmount ("Beer amount", float) = 1.0
         
         [Header(Weather Map)]
         [Space(10)]
@@ -82,16 +83,18 @@ Shader "Custom/Volumetric_clouds"
 
             // -----------------------------------------------------
             // Vertex Shader
-            v2f vert (appdata v)
+            v2f vert (const appdata v)
             {
+                // Standard transforming of vertices to clip space
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
 
+                // The view vector is the direction at which the camera is looking
                 float3 view_vector = mul(unity_CameraInvProjection, float4(v.uv * 2.0f - 1.0f, 0.0f, -1.0f));
                 o.view_vector = mul(unity_CameraToWorld, float4(view_vector, 0.0f));
+
                 o.screenPos = ComputeScreenPos(o.vertex);
-                
                 
                 return o;
             }
@@ -117,7 +120,7 @@ Shader "Custom/Volumetric_clouds"
             float3 _BoundsMin, _BoundsMax;
             float _CloudScale, _DensityMulti, _mapScale, _globalCoverage, _DetailScale;
             float _in_scattering, _out_scattering, _in_scattering_intensity, _in_scattering_exp, _io_bias;
-            float _cloud_attenuation, _out_scattering_ambient;
+            float _cloud_attenuation, _out_scattering_ambient, _BeerAmount;
             int _NumStep;
             
             float sample_density(float3 position, const float height_percent)
@@ -160,7 +163,7 @@ Shader "Custom/Volumetric_clouds"
             float sample_light(const float cos_theta, const float height_percentage, const float density)
             {
                 // Lights attenuation inside the cloud
-                const float attenuation = light_attenuation(density, cos_theta, 0.0f, _cloud_attenuation);
+                const float attenuation = light_attenuation(density, cos_theta, _BeerAmount, _cloud_attenuation);
                 
                 // In out scattering
                 const float io_scattering = scattering(cos_theta, _in_scattering, _out_scattering, _in_scattering_intensity, _in_scattering_exp, _io_bias);
@@ -175,7 +178,7 @@ Shader "Custom/Volumetric_clouds"
             // Pixel Shader
             fixed4 frag (const v2f i) : SV_Target
             {
-                // Create a primary camera ray
+                // Create a primary ray from the camera
                 Ray primary_ray;
                 primary_ray.origin = _WorldSpaceCameraPos;
                 primary_ray.direction = normalize(i.view_vector);
@@ -184,39 +187,46 @@ Shader "Custom/Volumetric_clouds"
                 const float non_linear_depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
                 const float z_depth = LinearEyeDepth(non_linear_depth) * length(i.view_vector);
                 
-                // Box data
+                // Assign the box data from the bounding box in the c# script
                 box box;
                 box.size = _BoundsMax - _BoundsMin;
                 box.center = (_BoundsMin + _BoundsMax) * 0.5f;
                 box.bound_max = _BoundsMax;
                 box.bound_min = _BoundsMin;
 
-                // Sample blue noise to create random offset
+                // Sample the blue noise texture to create a random offset
                 const float blueNoise = blueNoise_tex.SampleLevel(samplerblueNoise_tex, i.screenPos.xy, MIP_LEVEL);
                 
-                // Ray box intersection
+				// Check if a ray has intersected the bounding box and return
+				// - The distance to the bounding box
+				// - The distance inside the bounding box
                 const float2 ray_box = ray_box_dist(box.bound_min, box.bound_max, primary_ray);
                 const float dist_to_box = (blueNoise - 0.5f) + ray_box.x;
                 const float dist_inside_box = ray_box.y;
-                
+
+                // Create the step size from the distance inside the box / the number of steps that can
+				// be taken inside the bounding box
                 const float step_size = dist_inside_box / _NumStep;
+
+                // This is mainly use to correct the depth
                 const float dist_limit = min(z_depth - dist_to_box, dist_inside_box);
 
-                // Ray entry point
+                // If a ray has intersected the bounding box, an entry point is created which will
+				// be the start of the ray marching
                 const float3 entry_point = primary_ray.origin + primary_ray.direction * dist_to_box;
 
                 float transmittance = 1.0f;
                 float3 total_light = float3(0.0f, 0.0f, 0.0f);
-                float t = 0.0f;
 
+                float t = 0.0f;
                 while (t < dist_limit)
                 {
-                    // Sample position along the view direction
+                    // Sample a new position along the view direction
                     const float3 sample_position = entry_point + primary_ray.direction * t;
                     
                     // Height Percentage
                     const float height_percent = calculate_height_percentage(sample_position, box.bound_min, box.size);
-                    
+
                     // Sample the density at each point
                     const float density = sample_density(sample_position, height_percent) * step_size;
 
@@ -229,16 +239,20 @@ Shader "Custom/Volumetric_clouds"
                         // Sample the light
                         const float light = sample_light(cos_theta, height_percent, density);
                         total_light += density * step_size * transmittance * light;
+
                         transmittance *= exp(-density * step_size * _cloud_attenuation);
+                        
                         if (transmittance < 0.01f || transmittance > 1.0f) break;
                     }
+
+                    // Once sampling the density and light is finished, update t so that the sample position
+					// updates along the viewing direction
                     t += step_size;
                 }
 
                 // Combining outputs
-                const float3 background_color = tex2D(_MainTex, i.uv).rgb;
                 const float3 cloud_color = total_light * _LightColor0.rgb;
-                const float3 final_color = /*background_color **/ 0.0f * transmittance + cloud_color;
+                const float3 final_color = float3(0.0f, 0.0f, 0.0f) * transmittance + cloud_color;
                 return float4(final_color, 1.0f);
             }
             ENDCG

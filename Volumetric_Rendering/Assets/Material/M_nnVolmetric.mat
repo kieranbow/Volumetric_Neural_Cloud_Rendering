@@ -77,16 +77,18 @@ Material:
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _UVSec: 0
+    - _X: 0
+    - _Y: 0
     - _ZWrite: 1
-    - _cloud_attenuation: 0
+    - _cloud_attenuation: 0.505
     - _cloud_beer: 0
     - _density_to_sun: 0
     - _globalCoverage: 1
-    - _in_out_scattering: 0
+    - _in_out_scattering: 0.481
     - _in_scattering: 0
     - _mapScale: 200
-    - _out_scattering: 0
-    - _out_scattering_ambient: 0
+    - _out_scattering: 1
+    - _out_scattering_ambient: 0.498
     - _param: 0.5
     - _silver_line_exp: 0
     - _silver_line_intensity: 0

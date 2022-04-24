@@ -60,8 +60,8 @@ class AI(nn.Module):
          hiddenLayer_size = 3
          
          self.fc1 = nn.Linear(input_size, hiddenLayer_size)
-         self.fc2 = nn.Linear(hiddenLayer_size, 2)
-         self.fc3 = nn.Linear(2, output_size)
+         self.fc2 = nn.Linear(hiddenLayer_size, 3)
+         self.fc3 = nn.Linear(3, output_size)
          
      def forward(self, x):
          x = F.relu(self.fc1(x))
@@ -169,13 +169,55 @@ for key in weights:
     if len(list(weights[key].shape)) == 2:
         for y in range(weights[key].shape[0]):
             for x in range(weights[key].shape[1]):
-                print(key, str(float(weights[key][y][x])))
+                print(key, "yx: " + str(float(weights[key][y][x])))
     else:
         for x in range(weights[key].shape[0]):
-            print(key, str(float(weights[key][x])))
+            print(key, "x:" + str(float(weights[key][x])))
     print('=========')
    
 #%%    
 file = open("D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Weights.txt", "w")
 write(weights, file)
 file.close()
+
+#%%
+# This function writes a HLSL function for calulating a hidden layer. This function is stored inside a cginc file that
+# will be included with the main shader
+def calculateLayerHLSL(file, input_size, num_nodes, weights_size_1, weights_size_2, bias_size):
+    param_1 = "float inputs[" + str(input_size) + "]"
+    param_2 = ", inout float node[" + str(num_nodes) + "]"
+    param_3 = ", float weights[" + str(weights_size_1) + "][" + str(weights_size_2) + "]"
+    param_4 = ", float bias["+ str(bias_size) + "]"
+
+    file.write("void calculate_layer(" + param_1 + param_2 + param_3 + param_4 + ")\n{")
+    file.write("\n\tint column = 0;\n")
+    file.write("\tfor (int n = 0; n < " + str(num_nodes) + "; n++)\n\t{\n")
+    file.write("\t\tfor (int row = 0; row < " + str(weights_size_1) + "; row++)\n\t\t{\n")
+    file.write("\t\t\tnode[n] += relu(nn_dot(inputs[row], weights[row][column], bias[row]));\n\t\t}\n\t\tcolumn++;\n")
+    file.write("\t}\n")
+    file.write("}") 
+
+# This function writes a hlsl function that caclualtes the outputs from a hidden layer
+def calculateOutputHLSL(file, input_size, num_nodes, weights_size_1, bias_size):
+    param_1 = "float inputs[" + str(input_size) + "]"
+    param_2 = ", float weights[" + str(weights_size_1) + "]"
+    param_3 = ", float bias["+ str(bias_size) + "]"
+    
+    file.write("void calculate_output(" + param_1 + param_2 + param_3 + ")\n{")
+    file.write("\n\t float output = 0.0f;\n")
+    file.write("\t for (int row = 0; row < " + str(weights_size_1) + "; row++)\n\t{\n")
+    file.write("\t\t node[n] += sigmoid(nn_dot(inputs[row], weights[row], bias[row]));\n\t}\n \t return output;\n")
+    file.write("}")
+    
+def sampleFromWeightsHLSL(file, num_hidden_layers, hidden_layer_size):
+    file.write("float sample_from_weights(float3 position)\n{\n")
+    file.write("\t float pos[3] = { position.x, position.y, position.z };\n")
+    for i in range(num_hidden_layers):
+        file.write("\t float layer_" + str(i + 1) + "_nodes[" + str(hidden_layer_size) + "] = {0.0f, 0.0f, 0.0f};\n")
+   
+    file.write("calculateLayerHLSL(pos, )")
+
+hlslFile = open("D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\functions.txt", "w")
+calculateLayerHLSL(hlslFile, 3, 3, 3, 3, 3)
+#calculateOutputHLSL(hlslFile, 3, 3, 3, 1)
+#sampleFromWeightsHLSL(hlslFile, 2, 3)

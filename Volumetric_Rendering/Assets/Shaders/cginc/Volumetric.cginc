@@ -138,10 +138,10 @@ float generate_base_shape(float4 shape)
     return remap(shape.r, base_shape, MAX, MIN, MAX);
 }
 
-float light_attenuation(float density_to_sun, float cos_theta, float beer_amount, float atten_clamp)
+float light_attenuation(const float density_to_sun, const float cos_theta, const float beer_amount, const float atten_clamp)
 {
-    float primary_atten = exp(-beer_amount * density_to_sun);
-    float second_atten = exp(-beer_amount * atten_clamp);
+    const float primary_atten = exp(-beer_amount * density_to_sun);
+    const float second_atten = exp(-beer_amount * atten_clamp);
 
     // Reduces the attenuation clamp when facing the sun
     float reduce_clamp = remap(cos_theta, MIN, MAX, second_atten, second_atten * 0.5f);
@@ -160,11 +160,6 @@ float scattering(const float cos_theta, const float in_scattering, const float o
     // Creates the in-scattering effect using henyey_greenstein
     const float hg1 = henyey_Greenstein(cos_theta, in_scattering);
 
-    // x = 0.83f
-    // y = 0.3f
-    // z = 0.8f
-    // factor = 0.015f
-
     // Extra intensity to in-scattering
     const float hg2 = ins_intensity * pow(saturate(cos_theta), ins_exp);
 
@@ -179,8 +174,7 @@ float scattering(const float cos_theta, const float in_scattering, const float o
 }
 
 // Adds a non-physically based ambient occlusion to the clouds to create contours and to prevent
-// white blowouts due to the high changes that the first step towards the sun will be outside the
-// volumetric box
+// white blowouts
 float out_scattering_ao(const float height_percentage, const float density, const float osa)
 {
     const float a = saturate(osa * pow(density, remap(height_percentage, 0.3f, 0.9f, 0.5f, 1.0f)));

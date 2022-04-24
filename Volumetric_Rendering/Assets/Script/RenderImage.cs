@@ -1,4 +1,6 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -30,6 +32,10 @@ public class RenderImage : MonoBehaviour
     private Vector3 m_Fc2Weights;
     private float m_Fc2Bias;
 
+    //[SerializeField] private List<float> m_Weights = new List<float>();
+
+    private List<Color> colourWeights = new List<Color>();
+
     private void Start()
     {
         // Presuming there is only 1 camera and that is the main camera, set the DepthTextureMode to depth
@@ -45,14 +51,26 @@ public class RenderImage : MonoBehaviour
         }
 
         ParseWeights();
-
         // Send neural network weights to the shader
-        material.SetVector("fc1_weights_1", m_Fc1Weights1);
-        material.SetVector("fc1_weights_2", m_Fc1Weights2);
-        material.SetVector("fc1_weights_3", m_Fc1Weights3);
-        material.SetVector("fc1_bias", m_Fc1Bias);
-        material.SetVector("fc2_weights", m_Fc2Weights);
-        material.SetFloat("fc2_bias", m_Fc2Bias);
+
+        Texture2D weightTexture2D = new Texture2D(colourWeights.Count, 1, TextureFormat.R16, false, true);
+        weightTexture2D.SetPixels(colourWeights.ToArray());
+        
+        material.SetTexture("_weightTex", weightTexture2D);
+
+        // int stride = System.Runtime.InteropServices.Marshal.SizeOf(typeof(float));
+        // ComputeBuffer weightsBuffer = new ComputeBuffer(m_Weights.Count, stride, ComputeBufferType.Default);
+        // weightsBuffer.SetData(m_Weights.ToArray());
+        // material.SetBuffer("weights", weightsBuffer);
+
+
+
+        // material.SetVector("fc1_weights_1", m_Fc1Weights1);
+        // material.SetVector("fc1_weights_2", m_Fc1Weights2);
+        // material.SetVector("fc1_weights_3", m_Fc1Weights3);
+        // material.SetVector("fc1_bias", m_Fc1Bias);
+        // material.SetVector("fc2_weights", m_Fc2Weights);
+        // material.SetFloat("fc2_bias", m_Fc2Bias);
     }
 
     // Parse a txt file which contains a list of weights and biases for each
@@ -64,30 +82,39 @@ public class RenderImage : MonoBehaviour
         
         // Regex is used to split the contents of the file into separate lines
         string[] lines = Regex.Split(file, "\n");
+        
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (lines[i] == "") break;
+            // m_Weights.Add(float.Parse(lines[i]));
+            
+            Color temp = new Color(float.Parse(lines[i]), 0.0f, 0.0f);
+            colourWeights.Add(temp);
+        }
 
-        // Weights for input to hidden layer 1
-        m_Fc1Weights1.x = float.Parse(lines[0]);
-        m_Fc1Weights1.y = float.Parse(lines[1]);
-        m_Fc1Weights1.z = float.Parse(lines[2]);
-        m_Fc1Weights2.x = float.Parse(lines[3]);
-        m_Fc1Weights2.y = float.Parse(lines[4]);
-        m_Fc1Weights2.z = float.Parse(lines[5]);
-        m_Fc1Weights3.x = float.Parse(lines[6]);
-        m_Fc1Weights3.y = float.Parse(lines[7]);
-        m_Fc1Weights3.z = float.Parse(lines[8]);
-
-        // Biases for input to hidden layer 1
-        m_Fc1Bias.x = float.Parse(lines[9]);
-        m_Fc1Bias.y = float.Parse(lines[10]);
-        m_Fc1Bias.z = float.Parse(lines[11]);
-
-        // Weights for hidden layer 1 to output
-        m_Fc2Weights.x = float.Parse(lines[12]);
-        m_Fc2Weights.y = float.Parse(lines[13]);
-        m_Fc2Weights.z = float.Parse(lines[14]);
-
-        // Biases for hidden layer 1 to output
-        m_Fc2Bias = float.Parse(lines[15]);
+        // // Weights for input to hidden layer 1
+        // m_Fc1Weights1.x = float.Parse(lines[0]);
+        // m_Fc1Weights1.y = float.Parse(lines[1]);
+        // m_Fc1Weights1.z = float.Parse(lines[2]);
+        // m_Fc1Weights2.x = float.Parse(lines[3]);
+        // m_Fc1Weights2.y = float.Parse(lines[4]);
+        // m_Fc1Weights2.z = float.Parse(lines[5]);
+        // m_Fc1Weights3.x = float.Parse(lines[6]);
+        // m_Fc1Weights3.y = float.Parse(lines[7]);
+        // m_Fc1Weights3.z = float.Parse(lines[8]);
+        //
+        // // Biases for input to hidden layer 1
+        // m_Fc1Bias.x = float.Parse(lines[9]);
+        // m_Fc1Bias.y = float.Parse(lines[10]);
+        // m_Fc1Bias.z = float.Parse(lines[11]);
+        //
+        // // Weights for hidden layer 1 to output
+        // m_Fc2Weights.x = float.Parse(lines[12]);
+        // m_Fc2Weights.y = float.Parse(lines[13]);
+        // m_Fc2Weights.z = float.Parse(lines[14]);
+        //
+        // // Biases for hidden layer 1 to output
+        // m_Fc2Bias = float.Parse(lines[15]);
     }
     
     // https://docs.unity3d.com/ScriptReference/MonoBehaviour.OnRenderImage.html

@@ -40,6 +40,9 @@ Shader "Custom/nn_volumetric"
         [Header(Misc)]
         [Space(10)]
         _NumStep ("Number of Steps", Range(0, 256)) = 100
+        
+        _X ("X", float) = 0
+        _Y ("Y", float) = 0
     }
     SubShader
     {
@@ -107,108 +110,54 @@ Shader "Custom/nn_volumetric"
             float3 fc1_bias;
             float3 fc2_weights;
             float fc2_bias;
-            
-            float relu(float x)
-            {
-                return max(0.0f, x);
-            }
 
-            float sigmoid(float x)
+            float _X, _Y;
+
+            Texture2D<float4> _weightTex;
+            SamplerState sampler_weightTex;
+            //StructuredBuffer<float> weights;
+
+            float sampleWeights(float x, float y)
             {
-                return 1.0f / (1.0f + exp(-x));
-            }
-            
-            float sample_density_from_nn(float3 inputs, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
-            {
-                float neuron_1 = sigmoid(dot(inputs, fc1_weights_1) + fc1_bias.x);
-                float neuron_2 = sigmoid(dot(inputs, fc1_weights_2) + fc1_bias.y);
-                float neuron_3 = sigmoid(dot(inputs, fc1_weights_3) + fc1_bias.z);
+                float i = clamp(x / 4.0f, 0, 1);
+                float j = clamp(y / 4.0f, 0, 1);
                 
-                const float3 hidden_layer = float3(neuron_1, neuron_2, neuron_3);
-                const float output = sigmoid(dot(hidden_layer, fc2_weights) + fc2_bias);
-                if (inputs.x > 0.5f) return 0.0f;
-                return output;
+                return _weightTex.SampleLevel(sampler_weightTex, float2(i, j), 0).r;
             }
-
-            void test(float inputs[3], float weights[15], float bias[4])
+            
+            float sample_density_from_nn(float3 inputs, Texture2D<float4> weights)
             {
-                float neuron[3];
-                // Loop through every hidden layer
-                for (int nl = 0; nl < 1; nl++)
+                // Convert input into an array for easier access with functions
+                float position[3] = {inputs.x, inputs.y, inputs.z};
+
+                float weight_1[3][3] =
                 {
-                    // Loop through every neuron in that hidden layer
-                    for (int n = 0; n < 3; n++)
-                    {
-                        int w = 0;
-                        int b = 0;
+                    {sampleWeights(0.0f, 0.0f), sampleWeights(1.0f, 0.0f), sampleWeights(2.0f, 0.0f)},
+                    {sampleWeights(3.0f, 0.0f), sampleWeights(4.0f, 0.0f), sampleWeights(0.0f, 1.0f)},
+                    {sampleWeights(1.0f, 2.0f), sampleWeights(2.0f, 3.0f), sampleWeights(2.0f, 4.0f)}
+                };
 
-                        for (int i = 0; i < 3; i++)
-                        {
-                            neuron[n] += weights[w] * inputs[i] + bias[b];
-                            w++;
-                            b++;
-                        }
-                        neuron[n] = sigmoid(neuron[n]);
-                    }
-                }
+                float bias_1[3] = {0.294, 0.108, 0.316};
+
+                float weight_2[3] = { -0.519, -0.252, 0.108 };
+                float bias_2 = -0.269;
+                
+                float nodes[3] = {0.0f, 0.0f, 0.0f};
+                
+                calculate_layer(position, nodes, weight_1, bias_1);
+
+                if (inputs.x > 0.5f) return 0.0f;
+                
+                return calculate_output(nodes, weight_2, bias_2);
             }
 
-            float sample_density(float3 position, const float height_percent, float3 fc1_weights_1, float3 fc1_weights_2, float3 fc1_weights_3, float3 fc1_bias, float3 fc2_weights, float fc2_bias)
+            float sample_density(float3 position, Texture2D<float4> weights)
             {
-                // Create uvw using the sample position and the scale and offset of the cloud texture
-                const float3 uvw = position;// * _CloudScale * 0.001f + _CloudOffset * 0.01f;
-                
                 float4 local_position = mul(UNITY_MATRIX_IT_MV, float4(position, 1.0f));
-                
-                
-                
-                // Sample the weather map
-                const float4 weather_map        = Weather_tex.SampleLevel(samplerWeather_tex, position.xz / _mapScale, 0.0f);
-                const float weather_map_control = normalize_weather_map(weather_map, _globalCoverage);
-
-                // Alter the cloud base shape using a altering shape height function
-                const float shape_altering = alter_shape_height(height_percent, weather_map);
-
-                // Alter the cloud's density using a altering density height Function
-                const float density_altering = alter_density_height(height_percent, weather_map, _globalCoverage);
-
-                float density = sample_density_from_nn(local_position.xyz, fc1_weights_1, fc1_weights_2, fc1_weights_3, fc1_bias, fc2_weights, fc2_bias);
-
-                // Create the base cloud shape
-                const float SNsample = remap(density, density - MAX, MAX, MIN, MAX);
-                const float SN  = saturate(remap(SNsample * shape_altering, MAX - _globalCoverage * weather_map_control, MAX, MIN, MAX)) * density_altering;
-
-                //if (SN > MIN) return density * _DensityMulti;
+                const float density = sample_density_from_nn(local_position.xyz, weights);
                 return density * _DensityMulti;
             }
 
-            float3 sample_light(float cos_angle, float height_percentage, float density)
-            {
-                // Attenuation
-                float primary   = exp(-_cloud_beer * _density_to_sun);
-                float secondary = exp(-_cloud_beer * _cloud_attenuation) * 0.7f;
-                float check     = remap(cos_angle, MIN, MAX, secondary, secondary * 0.5f);
-                float attenuation_prob = max(check, primary);
-                
-                // Ambient Out scattering
-                float depth         = _out_scattering_ambient * pow(density, remap(height_percentage, 0.3f, 0.9f, 0.5f, MAX));
-                float vertical      = pow(saturate(remap(height_percentage, MIN, 0.3f, 0.8f, 1.0f)), 0.8f);
-                float out_scatter   = depth * vertical;
-                out_scatter         = 1.0 - saturate(out_scatter);
-                float ambient_out_scattering = out_scatter;
-
-                // In out scattering
-                float hg1               = henyey_Greenstein(cos_angle, _in_scattering);
-                float hg2               = _silver_line_intensity * pow(saturate(cos_angle), _silver_line_exp);
-                float hg_inscattering   = max(hg1, hg2);
-                float hg_outscattering  = henyey_Greenstein(cos_angle, -_out_scattering);
-                float inoutscattering   = lerp(hg_inscattering, hg_outscattering, _in_out_scattering);
-                float sun_highlight     = inoutscattering;
-                float attenuation       = attenuation_prob * sun_highlight * ambient_out_scattering;
-                
-                return attenuation;
-            }
-            
             fixed4 frag (v2f i) : SV_Target
             {
                 // Primary camera ray
@@ -239,11 +188,7 @@ Shader "Custom/nn_volumetric"
                 const float step_size = dist_inside_box / _NumStep;
                 const float dist_limit = min(z_depth - dist_to_box, dist_inside_box);
 
-                // Cloud lighting
-                float cos_angle = dot(primary_ray.direction, _WorldSpaceLightPos0.xyz);
-
-                float transmittance = 1.0f;
-                float3 total_light = float3(0.0f, 0.0f, 0.0f);
+                float total_density = 0.0f;
                 while (dist_travelled < dist_limit)
                 {
                     // Sample position along the view direction
@@ -252,27 +197,18 @@ Shader "Custom/nn_volumetric"
                     // Height Percentage
                     const float height_percent = calculate_height_percentage(sample_position, box.bound_min, box.size);
                     
+                    // float4 weights = _weightTex.SampleLevel(sampler_weightTex, i.uv, 0);
+                    
                     // Sample density
-                    const float density = sample_density(sample_position, height_percent, fc1_weights_1, fc1_weights_2, fc1_weights_3, fc1_bias, fc2_weights, fc2_bias) * step_size;
+                    const float density = sample_density(sample_position, _weightTex) * step_size;
 
-                    if(density > 0.0f)
-                    {
-                        const float3 light_march = sample_light(cos_angle, height_percent, density);
-                        total_light += density * transmittance * light_march;
-                        transmittance *= exp(-density * _cloud_attenuation);
-                    
-                        if (transmittance < 0.01f) break;
-                        if (transmittance > 1.0f)  break;
-                    }
-                    
+                    total_density += density;
                     dist_travelled += step_size;
                 }
 
                 // Combining outputs
                 const float3 background_color = tex2D(_MainTex, i.uv).rgb;
-                const float3 cloud_colour = total_light * _LightColor0.rgb;
-                const float3 final_color = background_color * transmittance + cloud_colour;
-                return float4(final_color, 1.0f);
+                return float4(background_color * exp(-total_density), 1.0f);
             }
             ENDCG
         }
