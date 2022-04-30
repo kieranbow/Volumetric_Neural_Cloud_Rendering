@@ -315,7 +315,7 @@ bool writeToCSV(std::ofstream& file, std::vector<Point>& points)
 
 int main()
 {
-	std::string file_path = "Assets\\helmet.obj";
+	std::string file_path = "Assets\\unit_sphere.obj";
 
 	pScene = importer.ReadFile(file_path, aiProcess_JoinIdenticalVertices | aiProcess_Triangulate);
 
