@@ -4,13 +4,10 @@ import torch
 from torch import nn, optim
 import torch.nn.functional as F
 from torch.utils.data import Dataset
-
 import pandas as pd
-
 import random
 
-#%% -----Loading and creating the dataset-----
-
+#%%
 # A class that can read and iterate csv files
 class CSVdataset(Dataset):
     def __init__(self, csv_filePath, transform = None):
@@ -42,8 +39,6 @@ class CSVdataset(Dataset):
 
 
 training_data   = CSVdataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Data\\Training.csv')
-validation_data = CSVdataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Data\\Validation.csv')
-testing_data    = CSVdataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Data\\Testing.csv')
 
 # =============================================================================
 # for i in range(len(training_data)):
@@ -60,24 +55,30 @@ class AI(nn.Module):
          hiddenLayer_size = 3
          
          self.fc1 = nn.Linear(input_size, hiddenLayer_size)
-         self.fc2 = nn.Linear(hiddenLayer_size, 3)
-         self.fc3 = nn.Linear(3, output_size)
+         self.fc2 = nn.Linear(hiddenLayer_size, hiddenLayer_size)
+         self.fc3 = nn.Linear(hiddenLayer_size, hiddenLayer_size)
+         self.fc4 = nn.Linear(hiddenLayer_size, output_size)
          
      def forward(self, x):
+         #x = torch.sigmoid(self.fc1(x))
+         #x = torch.sigmoid(self.fc2(x))
+         #x = torch.sigmoid(self.fc3(x))
+         #x = torch.sigmoid(self.fc4(x))
+         
          x = F.relu(self.fc1(x))
          x = F.relu(self.fc2(x))
          x = F.relu(self.fc3(x))
-         #x = torch.sigmoid(self.fc1(x))
-         #x = torch.sigmoid(self.fc2(x))
+         x = F.relu(self.fc4(x))
          return x
  
 model = AI()
 print(model)
 
 loss_func = nn.MSELoss(reduction='sum')
-optimizer = optim.Adam(model.parameters(), lr=0.002)
+optimizer = optim.Adam(model.parameters(), lr=0.03)
 
 #%%
+# Output the parameters of the model
 for name, parameter in model.named_parameters():
     print('name: ', name)
     print(type(parameter))
@@ -96,17 +97,11 @@ def sampleFromDataset(data, sample, output_ref):
     sample[0]       = data[idx]['x']
     sample[1]       = data[idx]['y']
     sample[2]       = data[idx]['z']
-    
-    #sample[3]       = pow(data[idx]['x'], 2)
-    #sample[4]       = pow(data[idx]['y'], 2)
-    #sample[5]       = pow(data[idx]['z'], 2)
-    
     output_ref[0]   = data[idx]['density']
     
     return sample, output_ref
 
 print(sampleFromDataset(training_data, sample, output))
-
 
 #%%
 print('Training model')
@@ -123,24 +118,25 @@ for i in range(num_epochs):
     optimizer.step()
 
 print('Finished training model')
-#%%
-# =============================================================================
-# def writeLayer(weights, key, file):
-#     if len(list(weights[key].shape)) == 2:
-#         for y in range(weights[key].shape[0]):
-#             line = ""
-#             for x in range(weights[key].shape[1]):
-#                 line = line + " " + str(float(weights[key][y][x]))
-#             line = line + "\n"
-#             file.write(line)
-#     else:
-#         line = ""
-#         for x in range(weights[key].shape[0]):
-#             line = line + " " + str(float(weights[key][x]))
-#         line = line + "\n"
-#         file.write(line)
-# =============================================================================
 
+#%%
+torch.save(model.state_dict(), "D:\\My Documents\\Github\\Year 3\\Dissertation\Volumetric_Neural_Cloud_Rendering\\Neural Network\\MLP_model.pt")
+
+#%%
+model2 = AI() 
+model2.load_state_dict(torch.load("D:\\My Documents\\Github\\Year 3\\Dissertation\Volumetric_Neural_Cloud_Rendering\\Neural Network\\MLP_model.pt"))
+
+#%%
+sample_test = np.array([0,0,0], dtype=float)
+sampleFromDataset(training_data, sample_test, output)
+
+pred_1 = model(torch.autograd.Variable(torch.FloatTensor(sample_test)))
+print(torch.log(pred_1))
+
+pred_2 = model2(torch.autograd.Variable(torch.FloatTensor(sample_test)))
+print(torch.log(pred_1))
+
+#%%
 def writeLayer(weights, key, file):
     if len(list(weights[key].shape)) == 2:
         for y in range(weights[key].shape[0]):
@@ -152,11 +148,13 @@ def writeLayer(weights, key, file):
             line = str(float(weights[key][x])) + "\n"
             file.write(line)
 
+# Output the contents of the weight from the neural network
 def write(weights, file):
     keys = weights.keys()
     
     for k in keys:
         writeLayer(weights, k, file) 
+
 #%%
 # https://towardsdatascience.com/everything-you-need-to-know-about-saving-weights-in-pytorch-572651f3f8de
 print('output weights')
@@ -169,10 +167,10 @@ for key in weights:
     if len(list(weights[key].shape)) == 2:
         for y in range(weights[key].shape[0]):
             for x in range(weights[key].shape[1]):
-                print(key, "yx: " + str(float(weights[key][y][x])))
+                print(key, str(float(weights[key][y][x])))
     else:
         for x in range(weights[key].shape[0]):
-            print(key, "x:" + str(float(weights[key][x])))
+            print(key, str(float(weights[key][x])))
     print('=========')
    
 #%%    

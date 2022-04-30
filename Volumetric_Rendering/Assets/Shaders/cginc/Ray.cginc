@@ -7,7 +7,6 @@ struct Ray
 // -----------------------------------------------
 // Helper Functions
 
-// https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
 float2 ray_box_dist(const float3 bound_min, const float3 bound_max, const Ray ray)
 {
 	const float3 t0 = (bound_min - ray.origin) / ray.direction;
@@ -24,6 +23,7 @@ float2 ray_box_dist(const float3 bound_min, const float3 bound_max, const Ray ra
 
 	return float2(dist_to_box, dist_inside_box);
 }
+
 // Function from: http://www.cse.chalmers.se/~uffe/xjobb/RurikH%C3%B6gfeldt.pdf, Algorithm 5.2
 float3 ray_sphere(const float3 pos, const float radius, const Ray ray, const float3 cam_pos)
 {

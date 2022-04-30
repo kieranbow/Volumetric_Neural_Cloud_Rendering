@@ -17,7 +17,7 @@ Shader "Custom/Volumetric_clouds"
         
         [Header(Cloud Density)]
         [Space(10)]
-        _DensityMulti ("Density Multiplier", Range(0, 10)) = 5.0
+        _DensityMulti ("Density Multiplier", Range(0, 100)) = 5.0
         
         [Header(Light Scattering)]
         [Space(10)]
@@ -81,8 +81,6 @@ Shader "Custom/Volumetric_clouds"
                 float4 screenPos  : TEXCOORD2;
             };
 
-            // -----------------------------------------------------
-            // Vertex Shader
             v2f vert (const appdata v)
             {
                 // Standard transforming of vertices to clip space
@@ -142,16 +140,16 @@ Shader "Custom/Volumetric_clouds"
                 float4 shape_noise = Shape_tex.SampleLevel(samplerShape_tex, uvw, MIP_LEVEL);
                 
                 // Create the base cloud shape
-                const float SNsample = remap(shape_noise.r, generate_fbm(shape_noise) - MAX, MAX, MIN, MAX);
-                const float SN  = saturate(remap(SNsample * shape_altering, MAX - _globalCoverage * weather_map_control, MAX, MIN, MAX)) * density_altering;
+                const float SNsample    = remap(shape_noise.r, generate_fbm(shape_noise) - MAX, MAX, MIN, MAX);
+                const float SN          = saturate(remap(SNsample * shape_altering, MAX - _globalCoverage * weather_map_control, MAX, MIN, MAX)) * density_altering;
 
                 // Create the detail noise shape
                 if (SN > MIN)
                 {
-                    const float3 detail_uvw     = position * _DetailScale * 0.001f + _DetailOffset * 0.01f;
-                    const float4 detail_noise   = Noise_tex.SampleLevel(samplerNoise_tex, detail_uvw, MIP_LEVEL);
+                    const float3 detail_uvw         = position * _DetailScale * 0.001f + _DetailOffset * 0.01f;
+                    const float4 detail_noise       = Noise_tex.SampleLevel(samplerNoise_tex, detail_uvw, MIP_LEVEL);
+                    const float detail_noise_fbm    = generate_fbm(detail_noise);
                     
-                    const float detail_noise_fbm = detail_noise.r * 0.625f + detail_noise.g * 0.25f + detail_noise.b * 0.125f; //generate_fbm(detail_noise);
                     const float e = -(_globalCoverage * 0.75f);
                     const float detail_noise_mod = 0.35f * e * lerp(detail_noise_fbm, MAX - detail_noise_fbm, saturate(height_percent * 5.0f));
                     const float density = saturate(remap(SN, detail_noise_mod, MAX, MIN, MAX)) * density_altering;
@@ -174,8 +172,6 @@ Shader "Custom/Volumetric_clouds"
                 return attenuation * io_scattering * o_scattering_ao;
             }
 
-            // -----------------------------------------------------
-            // Pixel Shader
             fixed4 frag (const v2f i) : SV_Target
             {
                 // Create a primary ray from the camera
@@ -183,7 +179,7 @@ Shader "Custom/Volumetric_clouds"
                 primary_ray.origin = _WorldSpaceCameraPos;
                 primary_ray.direction = normalize(i.view_vector);
                 
-                // Get the depth texture
+                // Get the depth texture and convert it from eye depth to linear depth
                 const float non_linear_depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
                 const float z_depth = LinearEyeDepth(non_linear_depth) * length(i.view_vector);
                 

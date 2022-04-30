@@ -802,7 +802,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: ffed487617e724e43a622a1b752f69f4, type: 2}
+  - {fileID: 2100000, guid: c75fb57d12766bb45a037f00a5fd68c0, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -923,13 +923,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalRotation: {x: 0, y: -0.9838179, z: 0.17917138, w: 0}
+  m_LocalPosition: {x: 0, y: 41.5, z: 65.41}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 20.643, y: -180, z: 0}
 --- !u!114 &963194229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -950,40 +950,6 @@ MonoBehaviour:
   detailTexture3D: {fileID: 11700000, guid: f938ef82f2419c546a8989bcaf9b63dc, type: 2}
   weatherTexture2D: {fileID: 2800000, guid: 489558a2111bf7740b6c2ff2fde5b17c, type: 3}
   blueNoiseTexture2D: {fileID: 2800000, guid: 5bb92e256168a454aa369217d922e1b3, type: 3}
-  weights: {fileID: 4900000, guid: a3431ddf28387174a917a08a7a75b15b, type: 3}
-  m_Weights:
-  - 0.43682575
-  - -0.11584243
-  - -0.48742884
-  - -0.092639565
-  - 0.11991805
-  - -0.17950577
-  - 0.377913
-  - 0.3903556
-  - 0.45688307
-  - 0.29497826
-  - 0.10813087
-  - 0.31647068
-  - -0.51900345
-  - -0.25216582
-  - 0.108754694
-  - -0.26910233
-  - 0.43682575
-  - -0.11584243
-  - -0.48742884
-  - -0.092639565
-  - 0.11991805
-  - -0.17950577
-  - 0.377913
-  - 0.3903556
-  - 0.45688307
-  - 0.29497826
-  - 0.10813087
-  - 0.31647068
-  - -0.51900345
-  - -0.25216582
-  - 0.108754694
-  - -0.26910233
 --- !u!1 &1157529413
 GameObject:
   m_ObjectHideFlags: 0

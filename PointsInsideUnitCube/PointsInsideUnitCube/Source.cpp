@@ -26,7 +26,7 @@
 constexpr float epsilon = 0.000001f;
 constexpr float range_min = -0.9f;
 constexpr float range_max = 0.9f;
-constexpr int max_num_point = 1000;
+constexpr int max_num_point = 10000;
 
 using Indices = unsigned short;
 
@@ -135,9 +135,10 @@ struct Ray
 struct Point
 {
 	Point() {}
-	Point(float x, float y, float z) : position(x, y, z) {}
+	Point(float x, float y, float z, float d) : position(x, y, z), density(d) {}
 	
 	Vector3 position = {0.0f, 0.0f, 0.0f};
+	float density = 0.0f;
 };
 
 Assimp::Importer importer;
@@ -296,8 +297,9 @@ bool writeToCSV(std::ofstream& file, std::vector<Point>& points)
 			std::string x = std::to_string(point.position.x);
 			std::string y = std::to_string(point.position.y);
 			std::string z = std::to_string(point.position.z);
+			std::string d = std::to_string(point.density);
 
-			file << x + ", " + y + ", " + z + ", 1.0" << std::endl;
+			file << x + ", " + y + ", " + z + ", " + d << std::endl;
 		}
 		file.close();
 		file.flush();
@@ -313,7 +315,7 @@ bool writeToCSV(std::ofstream& file, std::vector<Point>& points)
 
 int main()
 {
-	std::string file_path = "Assets\\Unit_sphere.obj";
+	std::string file_path = "Assets\\helmet.obj";
 
 	pScene = importer.ReadFile(file_path, aiProcess_JoinIdenticalVertices | aiProcess_Triangulate);
 
@@ -386,6 +388,7 @@ int main()
 		{
 			Point point;
 			point.position = generate_random_position(range_min, range_max);
+			point.density = 1.0f;// uniform_real_distribution(0.0f, 1.0f);
 			rand_points.push_back(point);
 		}
 
@@ -431,6 +434,7 @@ int main()
 			{
 				Point temp;
 				temp.position = point.position;
+				temp.density = point.density;
 				saved_points.push_back(temp);
 			}
 

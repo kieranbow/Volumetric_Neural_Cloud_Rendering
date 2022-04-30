@@ -17,7 +17,7 @@ Shader "Custom/nn_volumetric"
         [Header(Cloud Density)]
         [Space(10)]
         _DensityThreshold ("Density Threshold", Range(0, 1)) = 0.5
-        _DensityMulti ("Density Multiplier", Range(0, 10)) = 5.0
+        _DensityMulti ("Density Multiplier", Range(0, 10)) = 1.0
         
         [Header(Cloud appearance)]
         [Space(10)]
@@ -31,7 +31,6 @@ Shader "Custom/nn_volumetric"
         _density_to_sun ("Density to sun", Range(0, 10)) = 0.0
         _cloud_attenuation ("Attenuation", Range(0, 1)) = 0.0
         _out_scattering_ambient ("Outscattering ambients", Range(0, 1)) = 0.0
-        _param ("Cloud brightness", Range(0, 1)) = 0.5
         
         [Header(Weather Map)]
         [Space(10)]
@@ -40,9 +39,6 @@ Shader "Custom/nn_volumetric"
         [Header(Misc)]
         [Space(10)]
         _NumStep ("Number of Steps", Range(0, 256)) = 100
-        
-        _X ("X", float) = 0
-        _Y ("Y", float) = 0
     }
     SubShader
     {
@@ -54,6 +50,7 @@ Shader "Custom/nn_volumetric"
         Pass
         {
             CGPROGRAM
+
             #pragma vertex vert
             #pragma fragment frag
 
@@ -104,61 +101,102 @@ Shader "Custom/nn_volumetric"
             float _cloud_beer, _density_to_sun, _cloud_attenuation, _out_scattering_ambient, _param;
             int _NumStep;
             
-            float3 fc1_weights_1;
-            float3 fc1_weights_2;
-            float3 fc1_weights_3;
-            float3 fc1_bias;
-            float3 fc2_weights;
-            float fc2_bias;
+            uniform float3 fc1_weights_1;
+            uniform float3 fc1_weights_2;
+            uniform float3 fc1_weights_3;
+            uniform float3 fc1_bias;
+            
+            uniform float3 fc2_weights_1;
+            uniform float3 fc2_weights_2;
+            uniform float3 fc2_weights_3;
+            uniform float3 fc2_bias;
 
-            float _X, _Y;
+            uniform float3 fc3_weights_1;
+            uniform float3 fc3_weights_2;
+            uniform float3 fc3_weights_3;
+            uniform float3 fc3_bias;
 
-            Texture2D<float4> _weightTex;
-            SamplerState sampler_weightTex;
-            //StructuredBuffer<float> weights;
+            uniform float3 fc4_weights_1;
+            uniform float3 fc4_bias;
 
-            float sampleWeights(float x, float y)
+            // float sample_density_from_nn(float3 inputs)
+            // {
+            //     // Convert input into an array for easier access with functions
+            //     float position[3] = {inputs.x, inputs.y, inputs.z};
+            //
+            //     float weight_1[3][3] =
+            //     {
+            //         {_weights[0], _weights[1], _weights[2]},
+            //         {_weights[3], _weights[4], _weights[5]},
+            //         {_weights[6], _weights[7], _weights[8]}
+            //     };
+            //     float bias_1[3] = {_weights[9], _weights[10], _weights[11]};
+            //
+            //     float weight_2[3][3] =
+            //     {
+            //         {_weights[12], _weights[13], _weights[14]},
+            //         {_weights[15], _weights[16], _weights[17]},
+            //         {_weights[18], _weights[19], _weights[20]},
+            //     };
+            //     float bias_2[3] = {_weights[21], _weights[22], _weights[23]};
+            //
+            //     float weights_3[3][3] =
+            //     {
+            //         {_weights[24], _weights[25], _weights[26]},
+            //         {_weights[27], _weights[28], _weights[29]},
+            //         {_weights[30], _weights[31], _weights[32]},
+            //     };
+            //     float bias_3[3] = {_weights[33], _weights[34], _weights[35]};
+            //
+            //     float weights_4[3] = {_weights[36], _weights[37], _weights[38]};
+            //     float bias_4 = _weights[39];
+            //     
+            //     float node_1[3] = {0.0f, 0.0f, 0.0f};
+            //     float node_2[3] = {0.0f, 0.0f, 0.0f};
+            //     float node_3[3] = {0.0f, 0.0f, 0.0f};
+            //
+            //     //if (inputs.x > 0.5f) return 0.0f;
+            //     
+            //     calculate_layer(position, node_1, weight_1, bias_1);
+            //     calculate_layer(node_1, node_2, weight_2, bias_2);
+            //     calculate_layer(node_2, node_3, weights_3, bias_3);
+            //     return calculate_output(position, weights_4, bias_4);
+            // }
+
+            // float sample_density(float3 position)
+            // {
+            //     float4 local_position = mul(unity_WorldToObject, float4(position, 1.0));
+            //     const float density = sample_density_from_nn(local_position.xyz);
+            //     return density * _DensityMulti;
+            // }
+
+            float hard_code_density(float3 position)
             {
-                float i = clamp(x / 4.0f, 0, 1);
-                float j = clamp(y / 4.0f, 0, 1);
+                // Convert the world space position into local space
+                float4 world_to_local = mul(unity_WorldToObject, float4(position, 1.0f));
                 
-                return _weightTex.SampleLevel(sampler_weightTex, float2(i, j), 0).r;
+                // Input -> hidden layer 1
+                const float n_1 = relu(fc1_weights_1.x * world_to_local.x + fc1_weights_1.y * world_to_local.y + fc1_weights_1.z * world_to_local.z + fc1_bias.x);
+                const float n_2 = relu(fc1_weights_2.x * world_to_local.x + fc1_weights_2.y * world_to_local.y + fc1_weights_2.z * world_to_local.z + fc1_bias.y);
+                const float n_3 = relu(fc1_weights_3.x * world_to_local.x + fc1_weights_3.y * world_to_local.y + fc1_weights_3.z * world_to_local.z + fc1_bias.z);
+
+                // Hidden layer 1 -> hidden layer 2
+                const float n_4 = relu(fc2_weights_1.x * n_1 + fc2_weights_1.y * n_2 + fc2_weights_1.z * n_3 + fc2_bias.x);
+                const float n_5 = relu(fc2_weights_2.x * n_1 + fc2_weights_2.y * n_2 + fc2_weights_2.z * n_3 + fc2_bias.y);
+                const float n_6 = relu(fc2_weights_3.x * n_1 + fc2_weights_3.y * n_2 + fc2_weights_3.z * n_3 + fc2_bias.z);
+
+                // Hidden layer 2 -> hidden layer 3
+                const float n_7 = relu(fc3_weights_1.x * n_4 + fc3_weights_1.y * n_5 + fc3_weights_1.z * n_6 + fc3_bias.x);
+                const float n_8 = relu(fc3_weights_2.x * n_4 + fc3_weights_2.y * n_5 + fc3_weights_2.z * n_6 + fc3_bias.y);
+                const float n_9 = relu(fc3_weights_3.x * n_4 + fc3_weights_3.y * n_5 + fc3_weights_3.z * n_6 + fc3_bias.z);
+
+                // Hidden layer 3 -> output
+                const float n_10 = relu(fc4_weights_1.x * n_7 + fc4_weights_1.y * n_8 + fc4_weights_1.z * n_9 + fc4_bias);
+                
+                return n_10 * _DensityMulti;
             }
             
-            float sample_density_from_nn(float3 inputs, Texture2D<float4> weights)
-            {
-                // Convert input into an array for easier access with functions
-                float position[3] = {inputs.x, inputs.y, inputs.z};
-
-                float weight_1[3][3] =
-                {
-                    {sampleWeights(0.0f, 0.0f), sampleWeights(1.0f, 0.0f), sampleWeights(2.0f, 0.0f)},
-                    {sampleWeights(3.0f, 0.0f), sampleWeights(4.0f, 0.0f), sampleWeights(0.0f, 1.0f)},
-                    {sampleWeights(1.0f, 2.0f), sampleWeights(2.0f, 3.0f), sampleWeights(2.0f, 4.0f)}
-                };
-
-                float bias_1[3] = {0.294, 0.108, 0.316};
-
-                float weight_2[3] = { -0.519, -0.252, 0.108 };
-                float bias_2 = -0.269;
-                
-                float nodes[3] = {0.0f, 0.0f, 0.0f};
-                
-                calculate_layer(position, nodes, weight_1, bias_1);
-
-                if (inputs.x > 0.5f) return 0.0f;
-                
-                return calculate_output(nodes, weight_2, bias_2);
-            }
-
-            float sample_density(float3 position, Texture2D<float4> weights)
-            {
-                float4 local_position = mul(UNITY_MATRIX_IT_MV, float4(position, 1.0f));
-                const float density = sample_density_from_nn(local_position.xyz, weights);
-                return density * _DensityMulti;
-            }
-
-            fixed4 frag (v2f i) : SV_Target
+            fixed4 frag (const v2f i) : SV_Target
             {
                 // Primary camera ray
                 Ray primary_ray;
@@ -189,26 +227,47 @@ Shader "Custom/nn_volumetric"
                 const float dist_limit = min(z_depth - dist_to_box, dist_inside_box);
 
                 float total_density = 0.0f;
+                
+                float4 col = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                
                 while (dist_travelled < dist_limit)
                 {
                     // Sample position along the view direction
                     const float3 sample_position = entry_point + primary_ray.direction * dist_travelled;
-                    
-                    // Height Percentage
-                    const float height_percent = calculate_height_percentage(sample_position, box.bound_min, box.size);
-                    
-                    // float4 weights = _weightTex.SampleLevel(sampler_weightTex, i.uv, 0);
-                    
-                    // Sample density
-                    const float density = sample_density(sample_position, _weightTex) * step_size;
 
+                    // Sample density
+                    //const float density = sample_density(sample_position) * step_size;
+                    const float density = hard_code_density(sample_position) * step_size;
+
+                    if (density < 0.009f) col = float4(1.0f, 0.0f, 0.0f, 1.0f);
+                    if (density > 0.009f) col = float4(0.0f, 1.0f, 0.0f, 1.0f);
+                    
+                    // if (dist_inside_box > 0.0f)
+                    // {
+                    //     //float3 sample_position = entry_point + primary_ray.direction * dist_travelled;
+                    //     //col = mul(unity_WorldToObject, float4(entry_point + primary_ray.direction * dist_travelled, 1.0f));
+                    //     //col = float4(sample_position, 1.0f);
+                    //     //const float density = sample_density(sample_position) * step_size;
+                    //     //col = density;
+                    // }
+                    
                     total_density += density;
                     dist_travelled += step_size;
                 }
 
+                //return mul(unity_WorldToObject, float4(entry_point + primary_ray.direction * dist_travelled, 1.0f));
+                
+                //if (col.r < 0.0f) return -col.r;
+                //if (col.g < 0.0f) return -col.g;
+                //if (col.b < 0.0f) return -col.b;
+                //return float4(tex2D(_MainTex, i.uv).rgb + col.r, 1.0f);
+                
+                // float3 position = entry_point + primary_ray.direction * 1.0f;
+                // return mul(unity_WorldToObject, float4(position, 1.0));
+                
                 // Combining outputs
                 const float3 background_color = tex2D(_MainTex, i.uv).rgb;
-                return float4(background_color * exp(-total_density), 1.0f);
+                return float4(background_color * exp(-total_density) + col.rgb, 1.0f);
             }
             ENDCG
         }
