@@ -63,11 +63,11 @@ Material:
     m_Floats:
     - _BeerAmount: 1
     - _BumpScale: 1
-    - _CloudScale: 1000
+    - _CloudScale: 214
     - _Cutoff: 0.5
-    - _DensityMulti: 100
+    - _DensityMulti: 10.2
     - _DetailNormalMapScale: 1
-    - _DetailScale: 500
+    - _DetailScale: 294
     - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5

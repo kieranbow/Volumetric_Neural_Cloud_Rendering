@@ -239,8 +239,8 @@ Shader "Custom/nn_volumetric"
                     //const float density = sample_density(sample_position) * step_size;
                     const float density = hard_code_density(sample_position) * step_size;
 
-                    if (density < 0.009f) col = float4(1.0f, 0.0f, 0.0f, 1.0f);
-                    if (density > 0.009f) col = float4(0.0f, 1.0f, 0.0f, 1.0f);
+                    //if (density < 0.009f) col = float4(1.0f, 0.0f, 0.0f, 1.0f);
+                    //if (density > 0.009f) col = float4(0.0f, 1.0f, 0.0f, 1.0f);
                     
                     // if (dist_inside_box > 0.0f)
                     // {

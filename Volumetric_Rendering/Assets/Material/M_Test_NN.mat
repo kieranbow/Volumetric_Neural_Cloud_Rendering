@@ -61,9 +61,9 @@ Material:
     - _CloudScale: 10
     - _Cutoff: 0.5
     - _DensityMulti: 1
-    - _DensityThreshold: 0.5
+    - _DensityThreshold: 0.464
     - _DetailNormalMapScale: 1
-    - _DetailScale: 50
+    - _DetailScale: 5
     - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5
@@ -81,7 +81,7 @@ Material:
     - _cloud_attenuation: 0
     - _cloud_beer: 0
     - _density_to_sun: 0
-    - _globalCoverage: 0.5
+    - _globalCoverage: 0.813
     - _in_out_scattering: 0
     - _in_scattering: 0
     - _mapScale: 1

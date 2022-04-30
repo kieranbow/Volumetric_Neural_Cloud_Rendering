@@ -60,7 +60,7 @@ public class RenderImage : MonoBehaviour
             material.SetTexture("blueNoise_tex", blueNoiseTexture2D);
 
             // Create a new render texture which will render the clouds at 1/2 of the screen resolution
-            RenderTexture rtClouds = RenderTexture.GetTemporary(source.width / 2, source.height / 2, 0, RenderTextureFormat.R8);
+            RenderTexture rtClouds = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.R8);
             rtClouds.useDynamicScale = true;
             rtClouds.filterMode = FilterMode.Bilinear;
         
