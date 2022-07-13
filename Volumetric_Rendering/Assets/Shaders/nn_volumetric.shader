@@ -191,9 +191,9 @@ Shader "Custom/nn_volumetric"
                 const float n_9 = relu(fc3_weights_3.x * n_4 + fc3_weights_3.y * n_5 + fc3_weights_3.z * n_6 + fc3_bias.z);
 
                 // Hidden layer 3 -> output
-                const float n_10 = relu(fc4_weights_1.x * n_7 + fc4_weights_1.y * n_8 + fc4_weights_1.z * n_9 + fc4_bias);
+                const float n_10 = sigmoid(fc4_weights_1.x * n_7 + fc4_weights_1.y * n_8 + fc4_weights_1.z * n_9 + fc4_bias);
                 
-                return n_10 * _DensityMulti;
+                return n_10;// * _DensityMulti;
             }
             
             fixed4 frag (const v2f i) : SV_Target
@@ -239,8 +239,8 @@ Shader "Custom/nn_volumetric"
                     //const float density = sample_density(sample_position) * step_size;
                     const float density = hard_code_density(sample_position) * step_size;
 
-                    //if (density < 0.009f) col = float4(1.0f, 0.0f, 0.0f, 1.0f);
-                    //if (density > 0.009f) col = float4(0.0f, 1.0f, 0.0f, 1.0f);
+                    if (density < 0.5f) col = float4(1.0f, 0.0f, 0.0f, 1.0f);
+                    if (density > 0.5f) col = float4(0.0f, 1.0f, 0.0f, 1.0f);
                     
                     // if (dist_inside_box > 0.0f)
                     // {

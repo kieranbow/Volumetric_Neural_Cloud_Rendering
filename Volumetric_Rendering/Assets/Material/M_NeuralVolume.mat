@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: M_nnVolmetric
-  m_Shader: {fileID: 4800000, guid: 3ee491f2f6296194a81ad04f35548101, type: 3}
+  m_Name: M_NeuralVolume
+  m_Shader: {fileID: 4800000, guid: 09c748f478a214b4f9b32a6a0da36f69, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -58,17 +58,16 @@ Material:
     m_Ints: []
     m_Floats:
     - _BumpScale: 1
-    - _CloudScale: 15.6
     - _Cutoff: 0.5
-    - _DensityMulti: 2.69
-    - _DensityThreshold: 0.5
+    - _DensityMulti: 0
     - _DetailNormalMapScale: 1
-    - _DetailScale: 50
     - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
+    - _Max: 1
     - _Metallic: 0
+    - _Min: 0
     - _Mode: 0
     - _NumStep: 100
     - _OcclusionStrength: 1
@@ -77,24 +76,8 @@ Material:
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _UVSec: 0
-    - _X: 0
-    - _Y: 0
     - _ZWrite: 1
-    - _cloud_attenuation: 0.505
-    - _cloud_beer: 0
-    - _density_to_sun: 0
-    - _globalCoverage: 1
-    - _in_out_scattering: 0.481
-    - _in_scattering: 0
-    - _mapScale: 200
-    - _out_scattering: 1
-    - _out_scattering_ambient: 0.498
-    - _param: 0.5
-    - _silver_line_exp: 0
-    - _silver_line_intensity: 0
     m_Colors:
-    - _CloudOffset: {r: 0, g: 0, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _DetailOffset: {r: 0, g: 0, b: 0, a: 0}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []

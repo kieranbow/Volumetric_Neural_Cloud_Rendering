@@ -1,4 +1,4 @@
-#%% import libraries
+#%% Import libraries
 import numpy as np
 import torch
 from torch import nn, optim
@@ -7,8 +7,7 @@ from torch.utils.data import Dataset
 import pandas as pd
 import random
 
-#%%
-# A class that can read and iterate csv files
+#%% CSV Dataset class
 class CSVdataset(Dataset):
     def __init__(self, csv_filePath, transform = None):
         self.file = pd.read_csv(csv_filePath)
@@ -38,47 +37,44 @@ class CSVdataset(Dataset):
         return sample
 
 
-training_data   = CSVdataset('D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Data\\Training.csv')
+training_data   = CSVdataset('F:\\Unity\\Projects\\Volumetric_Neural_Cloud_Rendering\\PointsInsideUnitCube\\PointsInsideUnitCube\\Training.csv')
 
-# =============================================================================
 # for i in range(len(training_data)):
 #      sample = training_data[i]
 #      print(i, sample['x'], sample['y'], sample['z'], sample['density'])
-# =============================================================================
-#%%
+
+#%% Neural Network Parameters
+inputSize = 3
+hiddenLayerSize = 3
+biasSize = 3
+numLayer = 3
+outputSize = 1
+
+#%% Neural Network Class
 class AI(nn.Module):
-     def __init__(self):
-         super().__init__()
+    def __init__(self, input_size, output_size, hiddenLayer_size):
+        super().__init__()
+         
+        self.fc1 = nn.Linear(input_size, hiddenLayer_size)
+        self.fc2 = nn.Linear(hiddenLayer_size, hiddenLayer_size)
+        self.fc3 = nn.Linear(hiddenLayer_size, hiddenLayer_size)
+        self.fc4 = nn.Linear(hiddenLayer_size, output_size)
+         
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = torch.sigmoid(self.fc4(x))
+        return x
  
-         input_size = 3
-         output_size = 1
-         hiddenLayer_size = 3
-         
-         self.fc1 = nn.Linear(input_size, hiddenLayer_size)
-         self.fc2 = nn.Linear(hiddenLayer_size, hiddenLayer_size)
-         self.fc3 = nn.Linear(hiddenLayer_size, hiddenLayer_size)
-         self.fc4 = nn.Linear(hiddenLayer_size, output_size)
-         
-     def forward(self, x):
-         #x = torch.sigmoid(self.fc1(x))
-         #x = torch.sigmoid(self.fc2(x))
-         #x = torch.sigmoid(self.fc3(x))
-         #x = torch.sigmoid(self.fc4(x))
-         
-         x = F.relu(self.fc1(x))
-         x = F.relu(self.fc2(x))
-         x = F.relu(self.fc3(x))
-         x = F.relu(self.fc4(x))
-         return x
- 
-model = AI()
+# Create instant of the AI class and print the topology of the network
+model = AI(inputSize, outputSize, hiddenLayerSize)
 print(model)
 
 loss_func = nn.MSELoss(reduction='sum')
 optimizer = optim.Adam(model.parameters(), lr=0.03)
 
-#%%
-# Output the parameters of the model
+#%% Output the parameters of the model
 for name, parameter in model.named_parameters():
     print('name: ', name)
     print(type(parameter))
@@ -86,7 +82,7 @@ for name, parameter in model.named_parameters():
     print('param.requires_grad: ', parameter.requires_grad)
     print('=========')
 
-#%%
+#%% Sampling randomly from the dataset
 sample = np.array([0,0,0], dtype=float)
 output = np.array([0], dtype=float)
 
@@ -97,13 +93,15 @@ def sampleFromDataset(data, sample, output_ref):
     sample[0]       = data[idx]['x']
     sample[1]       = data[idx]['y']
     sample[2]       = data[idx]['z']
-    output_ref[0]   = data[idx]['density']
-    
+    #sample[3]       = pow(data[idx]['x'], 2)
+    #sample[4]       = pow(data[idx]['y'], 2) 
+    #sample[5]       = pow(data[idx]['z'], 2) 
+    output_ref[0]   = data[idx]['density'] 
     return sample, output_ref
 
 print(sampleFromDataset(training_data, sample, output))
 
-#%%
+#%% Train the model
 print('Training model')
 
 num_epochs = 20000
@@ -136,8 +134,8 @@ print(torch.log(pred_1))
 pred_2 = model2(torch.autograd.Variable(torch.FloatTensor(sample_test)))
 print(torch.log(pred_1))
 
-#%%
-def writeLayer(weights, key, file):
+#%% 
+def writeLayer(weights, key, file, file2):
     if len(list(weights[key].shape)) == 2:
         for y in range(weights[key].shape[0]):
             for x in range(weights[key].shape[1]):
@@ -146,16 +144,16 @@ def writeLayer(weights, key, file):
     else:
         for x in range(weights[key].shape[0]):
             line = str(float(weights[key][x])) + "\n"
-            file.write(line)
+            file2.write(line)
 
 # Output the contents of the weight from the neural network
-def write(weights, file):
+def write(weights, file, file2):
     keys = weights.keys()
     
     for k in keys:
-        writeLayer(weights, k, file) 
+        writeLayer(weights, k, file, file2) 
 
-#%%
+#%% Output Weights and bias
 # https://towardsdatascience.com/everything-you-need-to-know-about-saving-weights-in-pytorch-572651f3f8de
 print('output weights')
 weights = model.state_dict()
@@ -163,7 +161,7 @@ weights = model.state_dict()
 for key in weights:
     print('key: ', key)
     print('shape: ', weights[key].shape)
-        
+
     if len(list(weights[key].shape)) == 2:
         for y in range(weights[key].shape[0]):
             for x in range(weights[key].shape[1]):
@@ -174,48 +172,106 @@ for key in weights:
     print('=========')
    
 #%%    
-file = open("D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Weights.txt", "w")
-write(weights, file)
+file = open("F:\\Unity\\Projects\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Weights.txt", "w")
+file2 = open("F:\\Unity\\Projects\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Bias.txt", "w")
+write(weights, file, file2)
 file.close()
+
+#%%
+#neuronIter = 0
+#weightsIter = 0
+#biasIter = 0
+
+#print("Total:\t"+ str(((inputSize * hiddenLayerSize + biasSize) * numLayer) + (outputSize * biasSize)))
+#print("weights:\t"+ str(inputSize * hiddenLayerSize * numLayer + inputSize))
+#print("bias:\t"+ str(biasSize * numLayer))
+
+#print("\nfloat calculateDensityFromANN(float input["+ str(inputSize) +"], float weights["+ str(inputSize * hiddenLayerSize * numLayer + inputSize) +"], float bias["+ str(biasSize * numLayer + 1) +"])\n{")
+
+#neuronList = []
+
+#for n in range(0, hiddenLayerSize * numLayer):
+    #neuronList.append("n" + str(n + 1))
+
+#for x in range(numLayer):  
+    #for y in range(hiddenLayerSize):
+        #dotProdStr = "\tconst float "+ neuronList[neuronIter] +" = relu("
+
+        #for z in range(0, hiddenLayerSize):
+            #if z == (hiddenLayerSize - 1):
+                #dotProdStr += "weights["+ str(weightsIter) +"] * input["+ str(z) +"] + bias["+ str(biasIter) +"]);"
+                #biasIter += 1
+            #else:
+                #dotProdStr += "weights["+ str(weightsIter) +"] * input["+ str(z) +"] + "
+            #weightsIter += 1
+            
+        
+        #neuronIter += 1
+        #print(dotProdStr)
+#print("\treturn sigmoid(weights["+ str(weightsIter) + "] * n7 + weights["+ str(weightsIter + 1) + "] * n8 + weights["+ str(weightsIter + 1) + "] * n9 + bias["+ str(biasIter) + "]);")
+#print("}")
 
 #%%
 # This function writes a HLSL function for calulating a hidden layer. This function is stored inside a cginc file that
 # will be included with the main shader
-def calculateLayerHLSL(file, input_size, num_nodes, weights_size_1, weights_size_2, bias_size):
-    param_1 = "float inputs[" + str(input_size) + "]"
-    param_2 = ", inout float node[" + str(num_nodes) + "]"
-    param_3 = ", float weights[" + str(weights_size_1) + "][" + str(weights_size_2) + "]"
-    param_4 = ", float bias["+ str(bias_size) + "]"
+def writeHLSL(file):
+    file.write("float relu(const float x)\n{ \n\treturn max(0.0f, x);\n}")
+    file.write("\nfloat sigmoid(const float x)\n{ \n\treturn 1.0f / (1.0f + exp(-x));\n}")
 
-    file.write("void calculate_layer(" + param_1 + param_2 + param_3 + param_4 + ")\n{")
-    file.write("\n\tint column = 0;\n")
-    file.write("\tfor (int n = 0; n < " + str(num_nodes) + "; n++)\n\t{\n")
-    file.write("\t\tfor (int row = 0; row < " + str(weights_size_1) + "; row++)\n\t\t{\n")
-    file.write("\t\t\tnode[n] += relu(nn_dot(inputs[row], weights[row][column], bias[row]));\n\t\t}\n\t\tcolumn++;\n")
-    file.write("\t}\n")
-    file.write("}") 
-
-# This function writes a hlsl function that caclualtes the outputs from a hidden layer
-def calculateOutputHLSL(file, input_size, num_nodes, weights_size_1, bias_size):
-    param_1 = "float inputs[" + str(input_size) + "]"
-    param_2 = ", float weights[" + str(weights_size_1) + "]"
-    param_3 = ", float bias["+ str(bias_size) + "]"
+    neuronIter = 0
+    weightsIter = 0
+    biasIter = 0
+    neuronList = []
     
-    file.write("void calculate_output(" + param_1 + param_2 + param_3 + ")\n{")
-    file.write("\n\t float output = 0.0f;\n")
-    file.write("\t for (int row = 0; row < " + str(weights_size_1) + "; row++)\n\t{\n")
-    file.write("\t\t node[n] += sigmoid(nn_dot(inputs[row], weights[row], bias[row]));\n\t}\n \t return output;\n")
-    file.write("}")
+    file.write("\nfloat calculateDensityFromANN(float input["+ str(inputSize) +"], float weights["+ str(inputSize * hiddenLayerSize * numLayer + inputSize) +"], float bias["+ str(biasSize * numLayer + 1) +"])\n{")
     
-def sampleFromWeightsHLSL(file, num_hidden_layers, hidden_layer_size):
-    file.write("float sample_from_weights(float3 position)\n{\n")
-    file.write("\t float pos[3] = { position.x, position.y, position.z };\n")
-    for i in range(num_hidden_layers):
-        file.write("\t float layer_" + str(i + 1) + "_nodes[" + str(hidden_layer_size) + "] = {0.0f, 0.0f, 0.0f};\n")
-   
-    file.write("calculateLayerHLSL(pos, )")
+    for n in range(0, hiddenLayerSize * numLayer):
+        neuronList.append("n" + str(n + 1))
 
-hlslFile = open("D:\\My Documents\\Github\\Year 3\\Dissertation\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\functions.txt", "w")
-calculateLayerHLSL(hlslFile, 3, 3, 3, 3, 3)
-#calculateOutputHLSL(hlslFile, 3, 3, 3, 1)
-#sampleFromWeightsHLSL(hlslFile, 2, 3)
+    # Write each hiddenLayer
+    for x in range(0, numLayer):
+    #{ 
+        for y in range(0, hiddenLayerSize):
+        #{
+            dotProdStr = "\n\tconst float "+ neuronList[neuronIter] +" = relu("
+
+            if neuronIter >= hiddenLayerSize:
+            #{
+                # Write each neuron in hidden layer
+                for z in range(0, hiddenLayerSize):
+                #{
+                    if z == (hiddenLayerSize - 1):
+                        dotProdStr += "weights["+ str(weightsIter) +"] * "+ neuronList[z] +" + bias["+ str(biasIter) +"]);"
+                        biasIter += 1
+                        weightsIter += 1
+                    else:
+                        dotProdStr += "weights["+ str(weightsIter) +"] * "+ neuronList[z] +" + "
+                        weightsIter += 1
+                #}
+                neuronIter += 1
+                file.write(dotProdStr)
+            #}
+            else:
+            #{
+                # Write each neuron in hidden layer
+                for z in range(0, hiddenLayerSize):
+                #{
+                    if z == (hiddenLayerSize - 1):
+                        dotProdStr += "weights["+ str(weightsIter) +"] * input["+ str(z) +"] + bias["+ str(biasIter) +"]);"
+                        biasIter += 1
+                        weightsIter += 1
+                    else:
+                        dotProdStr += "weights["+ str(weightsIter) +"] * input["+ str(z) +"] + "
+                        weightsIter += 1
+                #}
+                neuronIter += 1
+                file.write(dotProdStr)    
+            #}     
+        #}
+        file.write("\n")
+    #}
+    file.write("\n\treturn sigmoid(weights["+ str(weightsIter) + "] * n7 + weights["+ str(weightsIter + 1) + "] * n8 + weights["+ str(weightsIter + 1) + "] * n9 + bias["+ str(biasIter) + "]);\n}")
+
+hlslFile = open("F:\\Unity\\Projects\\Volumetric_Neural_Cloud_Rendering\\Volumetric_Rendering\\Assets\\Shaders\\cginc\\GeneratedFunction.cginc", 'w')
+writeHLSL(hlslFile)
+

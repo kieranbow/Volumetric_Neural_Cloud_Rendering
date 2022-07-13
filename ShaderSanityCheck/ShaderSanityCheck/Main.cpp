@@ -9,7 +9,7 @@ inline float uniform_real_distribution()
 {
 	std::mt19937 generator(std::random_device{}());
 	std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
-	auto number = dis(generator);
+	const auto number = dis(generator);
 	return number;
 }
 
@@ -18,7 +18,8 @@ inline float remap(float& value, float oldMin, float oldMax, float newMin, float
 	return newMin + (((value - oldMin) / (oldMax - oldMin)) * (newMax - newMin));
 }
 
-inline float relu(float x) { return std::max(0.0f, x); }
+inline float relu(const float x) { return std::max(0.0f, x); }
+inline float sigmoid(const float x) {return 1.0f / (1.0f + exp(-x));}
 
 // Vector3 struct
 struct Vector3
@@ -82,27 +83,41 @@ struct Vector3
 	float z = 0.0f;
 };
 
-float sampleDensity(const Vector3& samplePosition, const std::vector<Vector3>& weights, const std::vector<Vector3>& biases, const float& bias)
+float sampleDensity(const Vector3& samplePosition, const std::vector<float>& weights, const std::vector<float>& biases, const float& bias)
 {
-	// Layer 1 - Input -> hidden layer 1
-	float n_1 = relu(weights[0].x * samplePosition.x + weights[0].y * samplePosition.y + weights[0].z * samplePosition.z + biases[0].x);
-	float n_2 = relu(weights[1].x * samplePosition.x + weights[1].y * samplePosition.y + weights[1].z * samplePosition.z + biases[0].y);
-	float n_3 = relu(weights[2].x * samplePosition.x + weights[2].y * samplePosition.y + weights[2].z * samplePosition.z + biases[0].z);
+	// Input -> hidden layer 1
+	const float n_1 = relu(weights[0] * samplePosition.x + weights[1] * samplePosition.y + weights[2] * samplePosition.z + biases[0]);
+	const float n_2 = relu(weights[3] * samplePosition.x + weights[4] * samplePosition.y + weights[5] * samplePosition.z + biases[1]);
+	const float n_3 = relu(weights[6] * samplePosition.x + weights[7] * samplePosition.y + weights[8] * samplePosition.z + biases[2]);
 
-	// Layer 2 - Hidden layer 1 -> hidden layer 2
-	float n_4 = relu(weights[3].x * n_1 + weights[3].y * n_2 + weights[3].z * n_3 + biases[1].x);
-	float n_5 = relu(weights[4].x * n_1 + weights[4].y * n_2 + weights[4].z * n_3 + biases[1].y);
-	float n_6 = relu(weights[5].x * n_1 + weights[5].y * n_2 + weights[5].z * n_3 + biases[1].z);
+	// Hidden layer 1 -> hidden layer 2
+	const float n_4 = relu(weights[9] * n_1 + weights[10] * n_2 + weights[11] * n_3 + biases[3]);
+	const float n_5 = relu(weights[12] * n_1 + weights[13] * n_2 + weights[14] * n_3 + biases[4]);
+	const float n_6 = relu(weights[15] * n_1 + weights[16] * n_2 + weights[17] * n_3 + biases[5]);
 										
-	// Layer 3 - Hidden layer 2 -> hidden layer 3
-	float n_7 = relu(weights[6].x * n_4 + weights[6].y * n_5 + weights[6].z * n_6 + biases[2].x);
-	float n_8 = relu(weights[7].x * n_4 + weights[7].y * n_5 + weights[7].z * n_6 + biases[2].y);
-	float n_9 = relu(weights[8].x * n_4 + weights[8].y * n_5 + weights[8].z * n_6 + biases[2].z);
+	// Hidden layer 2 -> hidden layer 3
+	const float n_7 = relu(weights[18] * n_4 + weights[19] * n_5 + weights[20] * n_6 + biases[6]);
+	const float n_8 = relu(weights[21] * n_4 + weights[22] * n_5 + weights[23] * n_6 + biases[7]);
+	const float n_9 = relu(weights[24] * n_4 + weights[25] * n_5 + weights[26] * n_6 + biases[8]);
 	
-	// Layer 4 - Hidden layer 3 -> output
-	float n_10 = relu(weights[9].x * n_7 + weights[9].y * n_8 + weights[9].z * n_9 + bias);
+	// Hidden layer 3 -> output
+	return sigmoid(weights[27] * n_7 + weights[28] * n_8 + weights[29] * n_9 + biases[9]);
+}
 
-	return n_10;
+void readFromFile(const std::string& filePath, std::vector<float>& v)
+{
+	std::ifstream file;
+	file.open(filePath);
+
+	if (file.is_open())
+	{
+		std::string line;
+		while (std::getline(file, line))
+		{
+			v.emplace_back(std::stof(line));
+		}
+	}
+	file.close();
 }
 
 int main()
@@ -111,50 +126,60 @@ int main()
 	std::vector<Vector3> biases;
 	float bias = 0.0f;
 
-	std::ifstream file;
-	file.open("Weights.txt");
+	//std::ifstream file;
+	//file.open("Weights.txt");
 
-	if (file.is_open())
-	{
-		std::vector<float> values;
+	//if (file.is_open())
+	//{
+	//	std::vector<float> values;
 
-		std::string line = "";
-		while (std::getline(file, line))
-		{
-			values.push_back(std::stof(line));
-		}
+	//	std::string line;
+	//	while (std::getline(file, line))
+	//	{
+	//		values.push_back(std::stof(line));
+	//	}
 
-		// Layer 1
-		weigths.push_back(Vector3(values[0], values[1], values[2]));
-		weigths.push_back(Vector3(values[3], values[4], values[5]));
-		weigths.push_back(Vector3(values[6], values[7], values[8]));
-		biases.push_back(Vector3(values[9], values[10], values[11]));
+	//	// Layer 1
+	//	weigths.push_back(Vector3(values[0], values[1], values[2]));
+	//	weigths.push_back(Vector3(values[3], values[4], values[5]));
+	//	weigths.push_back(Vector3(values[6], values[7], values[8]));
+	//	biases.push_back(Vector3(values[9], values[10], values[11]));
 
-		// Layer 2
-		weigths.push_back(Vector3(values[12], values[13], values[14]));
-		weigths.push_back(Vector3(values[15], values[16], values[17]));
-		weigths.push_back(Vector3(values[18], values[19], values[20]));
-		biases.push_back(Vector3(values[21], values[22], values[23]));
+	//	// Layer 2
+	//	weigths.push_back(Vector3(values[12], values[13], values[14]));
+	//	weigths.push_back(Vector3(values[15], values[16], values[17]));
+	//	weigths.push_back(Vector3(values[18], values[19], values[20]));
+	//	biases.push_back(Vector3(values[21], values[22], values[23]));
 
-		// Layer 3
-		weigths.push_back(Vector3(values[24], values[25], values[26]));
-		weigths.push_back(Vector3(values[27], values[28], values[29]));
-		weigths.push_back(Vector3(values[30], values[31], values[32]));
-		biases.push_back(Vector3(values[33], values[34], values[35]));
+	//	// Layer 3
+	//	weigths.push_back(Vector3(values[24], values[25], values[26]));
+	//	weigths.push_back(Vector3(values[27], values[28], values[29]));
+	//	weigths.push_back(Vector3(values[30], values[31], values[32]));
+	//	biases.push_back(Vector3(values[33], values[34], values[35]));
 
-		// Output
-		weigths.push_back(Vector3(values[36], values[37], values[38]));
-		bias = values[39];
+	//	// Output
+	//	weigths.push_back(Vector3(values[36], values[37], values[38]));
+	//	bias = values[39];
 
-		values.clear();
-	}
+	//	values.clear();
+	//}
+
+	std::vector<float> weightsList;
+	std::vector<float> biasList;
+
+	std::string weightsFilePath = "New Folder\\Weights.txt";
+	std::string biasFilePath = "New Folder\\Bias.txt";
+
+	readFromFile(weightsFilePath, weightsList);
+	readFromFile(biasFilePath, biasList);
+
 
 	float mediumValue = 0.0f;
 
-	for (size_t i = 0; i < 200; i++)
+	for (size_t i = 0; i < 100; i++)
 	{
-		Vector3 samplePosition = Vector3::random();
-		float density = sampleDensity(samplePosition, weigths, biases, bias);
+		Vector3 samplePosition = Vector3::random(); // {0.5f, 0.25f, -0.5f}
+		const float density = sampleDensity(samplePosition, weightsList, biasList, bias);
 		mediumValue += density;
 		std::cout << "Sample position: " << samplePosition << "\t\t Density: " << std::to_string(density) << std::endl;
 	}

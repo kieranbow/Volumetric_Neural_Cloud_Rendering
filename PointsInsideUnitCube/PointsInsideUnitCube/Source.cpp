@@ -388,14 +388,14 @@ int main()
 		{
 			Point point;
 			point.position = generate_random_position(range_min, range_max);
-			point.density = 1.0f;// uniform_real_distribution(0.0f, 1.0f);
+			point.density = 1.0f; //uniform_real_distribution(0.0f, 1.0f);
 			rand_points.push_back(point);
 		}
 
 		// Next, loop through each point generating a ray and check if the point is within the mesh
 		// If the point is inside the mesh, save it into a json file
 		// If the point is not inside the mesh, ignore it.
-		for (auto& point : rand_points)
+		for (const auto& point : rand_points)
 		{
 			Ray ray;
 			ray.origin = point.position;
@@ -414,9 +414,9 @@ int main()
 				int vertex_idx_3 = indices.at(i + 2);
 
 				// Get the three vertices of a triangle
-				Vector3 vert0 = vertices.at(vertex_idx_1).position;
-				Vector3 vert1 = vertices.at(vertex_idx_2).position;
-				Vector3 vert2 = vertices.at(vertex_idx_3).position;
+				const Vector3 vert0 = vertices.at(vertex_idx_1).position;
+				const Vector3 vert1 = vertices.at(vertex_idx_2).position;
+				const Vector3 vert2 = vertices.at(vertex_idx_3).position;
 
 				// Test if ray hits the triangle
 				intersect_triangle(ray, vert0, vert1, vert2, t, u, v, false);
@@ -434,7 +434,14 @@ int main()
 			{
 				Point temp;
 				temp.position = point.position;
-				temp.density = point.density;
+				temp.density = 1.0f;
+				saved_points.push_back(temp);
+			}
+			else
+			{
+				Point temp;
+				temp.position = point.position;
+				temp.density = 0.0f;
 				saved_points.push_back(temp);
 			}
 
