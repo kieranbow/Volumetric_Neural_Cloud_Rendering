@@ -126,44 +126,6 @@ int main()
 	std::vector<Vector3> biases;
 	float bias = 0.0f;
 
-	//std::ifstream file;
-	//file.open("Weights.txt");
-
-	//if (file.is_open())
-	//{
-	//	std::vector<float> values;
-
-	//	std::string line;
-	//	while (std::getline(file, line))
-	//	{
-	//		values.push_back(std::stof(line));
-	//	}
-
-	//	// Layer 1
-	//	weigths.push_back(Vector3(values[0], values[1], values[2]));
-	//	weigths.push_back(Vector3(values[3], values[4], values[5]));
-	//	weigths.push_back(Vector3(values[6], values[7], values[8]));
-	//	biases.push_back(Vector3(values[9], values[10], values[11]));
-
-	//	// Layer 2
-	//	weigths.push_back(Vector3(values[12], values[13], values[14]));
-	//	weigths.push_back(Vector3(values[15], values[16], values[17]));
-	//	weigths.push_back(Vector3(values[18], values[19], values[20]));
-	//	biases.push_back(Vector3(values[21], values[22], values[23]));
-
-	//	// Layer 3
-	//	weigths.push_back(Vector3(values[24], values[25], values[26]));
-	//	weigths.push_back(Vector3(values[27], values[28], values[29]));
-	//	weigths.push_back(Vector3(values[30], values[31], values[32]));
-	//	biases.push_back(Vector3(values[33], values[34], values[35]));
-
-	//	// Output
-	//	weigths.push_back(Vector3(values[36], values[37], values[38]));
-	//	bias = values[39];
-
-	//	values.clear();
-	//}
-
 	std::vector<float> weightsList;
 	std::vector<float> biasList;
 

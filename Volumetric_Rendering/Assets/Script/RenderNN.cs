@@ -42,9 +42,7 @@ public class RenderNN : MonoBehaviour
 
         ParseWeights(weightsTextAsset, ref m_WeightsList);
         ParseWeights(biasTextAsset, ref m_BiasList);
-        //NeuralNetworkHelperFunction.CreateListOfWeights(m_Weights, ref m_weightsPacket);
-        //NeuralNetworkHelperFunction.SendWeightsToShader(ref material, m_weightsPacket);
-
+        
         material.SetFloatArray(Shader.PropertyToID("weights"), m_WeightsList);
         material.SetFloatArray(Shader.PropertyToID("bias"), m_BiasList);
         
