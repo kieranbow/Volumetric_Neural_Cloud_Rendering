@@ -221,8 +221,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: 7e2d05475305ce048b6e82daf24c7f26, type: 2}
   shader: {fileID: 4800000, guid: 09c748f478a214b4f9b32a6a0da36f69, type: 3}
-  weightsTextAsset: {fileID: 4900000, guid: cbc42b05eb59e6a48a3570ba0dcd1a36, type: 3}
-  biasTextAsset: {fileID: 4900000, guid: 14779b73c95fed24792032663c0d2a41, type: 3}
+  weightsTextAsset: {fileID: 4900000, guid: 61b8a09c393ce2b409e0abced35274ae, type: 3}
+  biasTextAsset: {fileID: 4900000, guid: 5483e592f015ea444b56af5a41df7ebf, type: 3}
   boundingBoxcenter: {x: 0, y: 0, z: 0}
   boundingBoxMin: {x: -1, y: -1, z: -1}
   boundingBoxMax: {x: 1, y: 1, z: 1}

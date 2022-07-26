@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset
 import pandas as pd
 import random
+import math
 
 #%% CSV Dataset class
 class CSVdataset(Dataset):
@@ -44,9 +45,9 @@ training_data   = CSVdataset('F:\\Unity\\Projects\\Volumetric_Neural_Cloud_Rende
 #      print(i, sample['x'], sample['y'], sample['z'], sample['density'])
 
 #%% Neural Network Parameters
-inputSize = 3
-hiddenLayerSize = 3
-biasSize = 3
+inputSize = 9
+hiddenLayerSize = 9
+biasSize = 9
 numLayer = 3
 outputSize = 1
 
@@ -83,7 +84,7 @@ for name, parameter in model.named_parameters():
     print('=========')
 
 #%% Sampling randomly from the dataset
-sample = np.array([0,0,0], dtype=float)
+sample = np.array([0,0,0,0,0,0,0,0,0], dtype=float)
 output = np.array([0], dtype=float)
 
 # Randomly sample a line in the dataset and extract x, y, z, density 
@@ -93,9 +94,12 @@ def sampleFromDataset(data, sample, output_ref):
     sample[0]       = data[idx]['x']
     sample[1]       = data[idx]['y']
     sample[2]       = data[idx]['z']
-    #sample[3]       = pow(data[idx]['x'], 2)
-    #sample[4]       = pow(data[idx]['y'], 2) 
-    #sample[5]       = pow(data[idx]['z'], 2) 
+    sample[3]       = pow(data[idx]['x'], 2)
+    sample[4]       = pow(data[idx]['y'], 2) 
+    sample[5]       = pow(data[idx]['z'], 2) 
+    sample[6]       = math.sin(data[idx]['x'] * 4 * math.pi)
+    sample[7]       = math.sin(data[idx]['y'] * 4 * math.pi)
+    sample[8]       = math.sin(data[idx]['z'] * 4 * math.pi)
     output_ref[0]   = data[idx]['density'] 
     return sample, output_ref
 
@@ -118,7 +122,7 @@ for i in range(num_epochs):
 print('Finished training model')
 
 #%%
-torch.save(model.state_dict(), "D:\\My Documents\\Github\\Year 3\\Dissertation\Volumetric_Neural_Cloud_Rendering\\Neural Network\\MLP_model.pt")
+torch.save(model.state_dict(), "F:\\Unity\\Projects\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Models\\MLP_model.pt")
 
 #%%
 model2 = AI() 
@@ -176,40 +180,7 @@ file = open("F:\\Unity\\Projects\\Volumetric_Neural_Cloud_Rendering\\Neural Netw
 file2 = open("F:\\Unity\\Projects\\Volumetric_Neural_Cloud_Rendering\\Neural Network\\Bias.txt", "w")
 write(weights, file, file2)
 file.close()
-
-#%%
-#neuronIter = 0
-#weightsIter = 0
-#biasIter = 0
-
-#print("Total:\t"+ str(((inputSize * hiddenLayerSize + biasSize) * numLayer) + (outputSize * biasSize)))
-#print("weights:\t"+ str(inputSize * hiddenLayerSize * numLayer + inputSize))
-#print("bias:\t"+ str(biasSize * numLayer))
-
-#print("\nfloat calculateDensityFromANN(float input["+ str(inputSize) +"], float weights["+ str(inputSize * hiddenLayerSize * numLayer + inputSize) +"], float bias["+ str(biasSize * numLayer + 1) +"])\n{")
-
-#neuronList = []
-
-#for n in range(0, hiddenLayerSize * numLayer):
-    #neuronList.append("n" + str(n + 1))
-
-#for x in range(numLayer):  
-    #for y in range(hiddenLayerSize):
-        #dotProdStr = "\tconst float "+ neuronList[neuronIter] +" = relu("
-
-        #for z in range(0, hiddenLayerSize):
-            #if z == (hiddenLayerSize - 1):
-                #dotProdStr += "weights["+ str(weightsIter) +"] * input["+ str(z) +"] + bias["+ str(biasIter) +"]);"
-                #biasIter += 1
-            #else:
-                #dotProdStr += "weights["+ str(weightsIter) +"] * input["+ str(z) +"] + "
-            #weightsIter += 1
-            
-        
-        #neuronIter += 1
-        #print(dotProdStr)
-#print("\treturn sigmoid(weights["+ str(weightsIter) + "] * n7 + weights["+ str(weightsIter + 1) + "] * n8 + weights["+ str(weightsIter + 1) + "] * n9 + bias["+ str(biasIter) + "]);")
-#print("}")
+file2.close()
 
 #%%
 # This function writes a HLSL function for calulating a hidden layer. This function is stored inside a cginc file that

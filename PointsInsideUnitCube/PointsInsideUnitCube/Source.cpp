@@ -7,15 +7,12 @@
 #include <random>
 #include <functional>
 #include <fstream>
-#include <array>
-#include <time.h>
 
 // Assimp
 #include <assimp\Importer.hpp>
 #include <assimp\scene.h>
 #include <assimp\postprocess.h>
 #include <assimp\matrix4x4.h>
-#include <assimp\cimport.h>
 
 // Uncomment these for extra information during execution
 // #define DEBUG
@@ -320,7 +317,7 @@ int main()
 	pScene = importer.ReadFile(file_path, aiProcess_JoinIdenticalVertices | aiProcess_Triangulate);
 
 	// Checks to see if aiScene is valid before loading the mesh
-	if (pScene == NULL)
+	if (pScene == nullptr)
 	{
 		std::cout << "Pointer to scene is null\n";
 		return 0;

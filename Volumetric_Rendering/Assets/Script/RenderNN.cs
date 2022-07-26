@@ -98,7 +98,7 @@ public class RenderNN : MonoBehaviour
         Gizmos.DrawWireCube(m_Box.center, m_Box.size);
         Gizmos.DrawSphere(m_Box.min, 0.1f);
         Gizmos.DrawSphere(m_Box.max, 0.1f);
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(Vector3.zero, 0.8f);
+        //Gizmos.color = Color.red;
+        //Gizmos.DrawWireSphere(Vector3.zero, 0.8f);
     }
 }
